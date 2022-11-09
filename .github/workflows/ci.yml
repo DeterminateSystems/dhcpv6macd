@@ -1,0 +1,76 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Install Nix
+        uses: cachix/install-nix-action@v14
+      - name: Format
+        run: nix develop -c go fmt
+      - name: Check diff
+        run: git diff --exit-code
+      - name: Check vet
+        run: nix develop -c go vet
+
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install  Nix
+      uses: cachix/install-nix-action@v17
+    - name: Format check
+      run: nix develop -c cargo fmt --check
+    - name: Build
+      run: nix develop -c cargo build
+    - name: Run tests
+      run: nix develop -c cargo test
+    - name: Nix build (clippy)
+      run: nix build
+
+  Spelling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: Check Spelling
+        run: nix develop --command codespell --ignore-words-list crate,pullrequest,pullrequests --skip target .
+
+
+  NixFormatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: Check nixpkgs-fmt formatting
+        run: git ls-files '*.nix' | nix develop --command xargs nixpkgs-fmt --check
+
+  EditorConfig:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+      - name: Check EditorConfig conformance
+        run: nix develop --command eclint

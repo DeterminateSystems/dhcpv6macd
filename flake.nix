@@ -25,6 +25,19 @@
 
     in
     {
+      devShell = forAllSystems
+        (system:
+          let
+            pkgs = nixpkgsFor.${system};
+          in
+          pkgs.mkShell {
+            buildInputs = with pkgs; [
+              codespell
+              eclint
+              go
+              nixpkgs-fmt
+            ];
+          });
 
       # Provide some binary packages for selected system types.
       packages = forAllSystems (system:
