@@ -21,6 +21,8 @@ go build .
 sudo ./dhcpv6macd -interface enp2s0 -base-address 2001:db8:0123:4567::
 ```
 
+There is also a NixOS module in the flake.nix.
+
 See the `flake.nix` for a NixOS test involving router and a client.
 
 ## Address allocation scheme
@@ -38,4 +40,4 @@ This does not provide:
 
 ## License
 
-This code is GPL-3, and based on Adguard's AdGuardHome DHCPv6 server: https://github.com/AdguardTeam/AdGuardHome/blob/master/internal/dhcpd/v6_unix.go.
+This code is GPL-3, and based on Adguard's AdGuardHome DHCPv6 server: https://github.com/AdguardTeam/AdGuardHome/blob/167b1125113c86e6304471d80d983c17f0f707e3/internal/dhcpd/v6_unix.go.
