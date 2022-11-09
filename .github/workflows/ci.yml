@@ -17,7 +17,11 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Nix
-        uses: cachix/install-nix-action@v14
+        uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
       - name: Format
         run: nix develop -c go fmt
       - name: Check diff
@@ -30,16 +34,16 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
-    - name: Install  Nix
+    - name: Install Nix
       uses: cachix/install-nix-action@v17
-    - name: Format check
-      run: nix develop -c cargo fmt --check
+      with:
+        extra_nix_config: |
+          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          experimental-features = nix-command flakes
     - name: Build
-      run: nix develop -c cargo build
-    - name: Run tests
-      run: nix develop -c cargo test
-    - name: Nix build (clippy)
       run: nix build
+    - name: Check
+      run: nix check
 
   Spelling:
     runs-on: ubuntu-latest
@@ -49,6 +53,7 @@ jobs:
         with:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
       - name: Check Spelling
         run: nix develop --command codespell --ignore-words-list crate,pullrequest,pullrequests --skip target .
 
@@ -61,6 +66,7 @@ jobs:
         with:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
       - name: Check nixpkgs-fmt formatting
         run: git ls-files '*.nix' | nix develop --command xargs nixpkgs-fmt --check
 
@@ -72,5 +78,6 @@ jobs:
         with:
           extra_nix_config: |
             access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
       - name: Check EditorConfig conformance
         run: nix develop --command eclint
