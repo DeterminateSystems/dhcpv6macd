@@ -41,9 +41,9 @@ jobs:
           access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
           experimental-features = nix-command flakes
     - name: Build
-      run: nix build
+      run: nix build -L
     - name: Check
-      run: nix flake check
+      run: nix flake check -L
 
   Spelling:
     runs-on: ubuntu-latest
