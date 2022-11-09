@@ -66,7 +66,7 @@
             # mechanisms to tell you what the hash should be or determine what
             # it should be "out-of-band" with other tooling (eg. gomod2nix).
             # To begin with it is recommended to set this, but one must
-            # remeber to bump this hash when your dependencies change.
+            # remember to bump this hash when your dependencies change.
             #vendorSha256 = pkgs.lib.fakeSha256;
 
             vendorSha256 = "sha256-0SpGYX3eA66TGhOJo70dAGV7843fZm5vqa4xEpsonsc=";

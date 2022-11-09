@@ -96,7 +96,7 @@ func (s *DHCPv6Handler) handleMsg(conn net.PacketConn, peer net.Addr,
 
 	_, err = conn.WriteTo(resp.ToBytes(), peer)
 	if err != nil {
-		err = fmt.Errorf("DHCPv6 reply write error", err)
+		err = fmt.Errorf("DHCPv6 reply write error: %s", err)
 		return
 	}
 
@@ -238,7 +238,7 @@ func main() {
 
 	iface, err := net.InterfaceByName(*networkInterface)
 	if err != nil {
-		log.Fatalf("finding interface %s by name: %w", *networkInterface, err)
+		log.Fatalf("finding interface %s by name: %s", *networkInterface, err)
 		return
 	}
 
@@ -265,7 +265,7 @@ func main() {
 
 	server, err := server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
 	if err != nil {
-		fmt.Printf("starting DHCPv6 server: %w", err)
+		fmt.Printf("starting DHCPv6 server: %s", err)
 	}
 
 	log.Printf("listening via UDP on %s", listenAddr)

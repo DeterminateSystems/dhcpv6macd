@@ -43,7 +43,7 @@ jobs:
     - name: Build
       run: nix build
     - name: Check
-      run: nix check
+      run: nix flake check
 
   Spelling:
     runs-on: ubuntu-latest
