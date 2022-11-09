@@ -42,8 +42,8 @@ jobs:
           experimental-features = nix-command flakes
     - name: Build
       run: nix build -L
-    - name: Check
-      run: nix flake check -L
+    #- name: Check -- not enabled because we need nested virt :(.
+    #  run: nix flake check -L
 
   Spelling:
     runs-on: ubuntu-latest
