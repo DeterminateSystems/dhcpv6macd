@@ -21,6 +21,8 @@ go build .
 sudo ./dhcpv6macd -interface enp2s0 -base-address 2001:db8:0123:4567::
 ```
 
+See the `flake.nix` for a NixOS test involving router and a client.
+
 ## Address allocation scheme
 
 The prefix is assumed to be at least a /80.
