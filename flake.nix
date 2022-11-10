@@ -51,8 +51,7 @@
           default = pkgs.buildGoModule {
             pname = "dhcpv6macd";
             inherit version;
-            # In 'nix develop', we don't need a copy of the source tree
-            # in the Nix store.
+
             src = nix-filter.lib {
               root = ./.;
               include = [
