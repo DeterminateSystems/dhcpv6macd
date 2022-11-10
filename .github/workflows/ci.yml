@@ -1,0 +1,88 @@
+name: Build
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+env:
+  CARGO_TERM_COLOR: always
+
+jobs:
+  format:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+      - name: Install Nix
+        uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
+      - name: Format
+        run: nix develop -c go fmt
+      - name: Check diff
+        run: git diff --exit-code
+      - name: Check vet
+        run: nix develop -c go vet
+
+
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Install Nix
+      uses: cachix/install-nix-action@v17
+      with:
+        # We don't _actually_ have kvm on the actions runners, so this
+        # will use TCG (CPU emulation) and thus be a fair bit
+        # slower. But we care more about the test running than about it
+        # running fast.
+        extra_nix_config: |
+          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+          experimental-features = nix-command flakes
+          extra-system-features = kvm
+    - name: Build
+      run: nix build -L
+    - name: Test
+      run: nix flake check -L
+
+  Spelling:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
+      - name: Check Spelling
+        run: nix develop --command codespell --ignore-words-list crate,pullrequest,pullrequests --skip target .
+
+
+  NixFormatting:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
+      - name: Check nixpkgs-fmt formatting
+        run: git ls-files '*.nix' | nix develop --command xargs nixpkgs-fmt --check
+
+  EditorConfig:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: cachix/install-nix-action@v17
+        with:
+          extra_nix_config: |
+            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
+            experimental-features = nix-command flakes
+      - name: Check EditorConfig conformance
+        run: nix develop --command eclint
