@@ -42,8 +42,12 @@ jobs:
           experimental-features = nix-command flakes
     - name: Build
       run: nix build -L
-    #- name: Check -- not enabled because we need nested virt :(.
-    #  run: nix flake check -L
+    - name: Test
+      # We don't _actually_ have kvm on the actions runners, so this
+      # will use TCG (CPU emulation) and thus be a fair bit
+      # slower. But we care more about it being run than about it
+      # running fast.
+      run: nix flake check -L --extra-system-features kvm
 
   Spelling:
     runs-on: ubuntu-latest
