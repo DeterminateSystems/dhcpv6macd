@@ -37,17 +37,18 @@ jobs:
     - name: Install Nix
       uses: cachix/install-nix-action@v17
       with:
+        # We don't _actually_ have kvm on the actions runners, so this
+        # will use TCG (CPU emulation) and thus be a fair bit
+        # slower. But we care more about the test running than about it
+        # running fast.
         extra_nix_config: |
           access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
           experimental-features = nix-command flakes
+          extra-system-features = kvm
     - name: Build
       run: nix build -L
     - name: Test
-      # We don't _actually_ have kvm on the actions runners, so this
-      # will use TCG (CPU emulation) and thus be a fair bit
-      # slower. But we care more about it being run than about it
-      # running fast.
-      run: nix flake check -L --extra-system-features kvm
+      run: nix flake check -L
 
   Spelling:
     runs-on: ubuntu-latest
