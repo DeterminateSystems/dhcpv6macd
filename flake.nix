@@ -3,9 +3,8 @@
 
   # Nixpkgs / NixOS version to use.
   inputs.nixpkgs.url = "nixpkgs/nixos-unstable-small";
-  inputs.nix-filter.url = "github:numtide/nix-filter";
 
-  outputs = { self, nixpkgs, nix-filter }:
+  outputs = { self, nixpkgs }:
     let
 
       # to work with older version of flakes
@@ -52,13 +51,13 @@
             pname = "dhcpv6macd";
             inherit version;
 
-            src = nix-filter.lib {
-              root = ./.;
-              include = [
-                "go.mod"
-                "go.sum"
-                (nix-filter.lib.matchExt "go")
-              ];
+            src = builtins.path {
+              filter = path: type:
+                baseNameOf path == "go.mod"
+                || baseNameOf path == "go.sum"
+                || baseNameOf path == "main.go";
+              path = ./.;
+              name = "src";
             };
 
             # This hash locks the dependencies of this package. It is
