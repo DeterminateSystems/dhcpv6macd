@@ -17,11 +17,7 @@ jobs:
         with:
           fetch-depth: 0
       - name: Install Nix
-        uses: cachix/install-nix-action@v18
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-            experimental-features = nix-command flakes
+        uses: DeterminateSystems/nix-installer-action@main
       - name: Format
         run: nix develop -c go fmt
       - name: Check diff
@@ -35,15 +31,13 @@ jobs:
     steps:
     - uses: actions/checkout@v3
     - name: Install Nix
-      uses: cachix/install-nix-action@v18
+      uses: DeterminateSystems/nix-installer-action@main
       with:
         # We don't _actually_ have kvm on the actions runners, so this
         # will use TCG (CPU emulation) and thus be a fair bit
         # slower. But we care more about the test running than about it
         # running fast.
-        extra_nix_config: |
-          access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-          experimental-features = nix-command flakes
+        extra-conf: |
           extra-system-features = kvm
     - name: Build
       run: nix build -L
@@ -54,11 +48,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v18
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-            experimental-features = nix-command flakes
+      - uses: DeterminateSystems/nix-installer-action@main
       - name: Check Spelling
         run: nix develop --command codespell --ignore-words-list crate,pullrequest,pullrequests --skip target .
 
@@ -67,11 +57,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v18
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-            experimental-features = nix-command flakes
+      - uses: DeterminateSystems/nix-installer-action@main
       - name: Check nixpkgs-fmt formatting
         run: git ls-files '*.nix' | nix develop --command xargs nixpkgs-fmt --check
 
@@ -79,10 +65,6 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: cachix/install-nix-action@v18
-        with:
-          extra_nix_config: |
-            access-tokens = github.com=${{ secrets.GITHUB_TOKEN }}
-            experimental-features = nix-command flakes
+      - uses: DeterminateSystems/nix-installer-action@main
       - name: Check EditorConfig conformance
         run: nix develop --command eclint
