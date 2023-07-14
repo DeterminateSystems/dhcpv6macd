@@ -18,6 +18,8 @@ jobs:
           fetch-depth: 0
       - name: Install Nix
         uses: DeterminateSystems/nix-installer-action@main
+      - name: Install magic Nix cache
+        uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Format
         run: nix develop -c go fmt
       - name: Check diff
@@ -32,6 +34,8 @@ jobs:
     - uses: actions/checkout@v3
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@main
+    - name: Install magic Nix cache
+      uses: DeterminateSystems/magic-nix-cache-action@main
       with:
         # We don't _actually_ have kvm on the actions runners, so this
         # will use TCG (CPU emulation) and thus be a fair bit
@@ -49,6 +53,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Check Spelling
         run: nix develop --command codespell --ignore-words-list crate,pullrequest,pullrequests --skip target .
 
@@ -58,6 +63,7 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Check nixpkgs-fmt formatting
         run: git ls-files '*.nix' | nix develop --command xargs nixpkgs-fmt --check
 
@@ -66,5 +72,6 @@ jobs:
     steps:
       - uses: actions/checkout@v3
       - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Check EditorConfig conformance
         run: nix develop --command eclint
