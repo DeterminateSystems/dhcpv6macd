@@ -34,8 +34,6 @@ jobs:
     - uses: actions/checkout@v3
     - name: Install Nix
       uses: DeterminateSystems/nix-installer-action@main
-    - name: Install magic Nix cache
-      uses: DeterminateSystems/magic-nix-cache-action@main
       with:
         # We don't _actually_ have kvm on the actions runners, so this
         # will use TCG (CPU emulation) and thus be a fair bit
@@ -43,6 +41,8 @@ jobs:
         # running fast.
         extra-conf: |
           extra-system-features = kvm
+    - name: Install magic Nix cache
+      uses: DeterminateSystems/magic-nix-cache-action@main
     - name: Build
       run: nix build -L
     - name: Test
