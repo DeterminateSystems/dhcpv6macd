@@ -14,7 +14,7 @@ import (
 
 type DHCPv6Handler struct {
 	baseAddress net.IP
-	serverDuid  dhcpv6.Duid
+	serverDuid  dhcpv6.DUIDLLT
 }
 
 var (
@@ -84,7 +84,7 @@ func (s *DHCPv6Handler) handleMsg(conn net.PacketConn, peer net.Addr,
 		return
 	}
 
-	resp.AddOption(dhcpv6.OptServerID(s.serverDuid))
+	resp.AddOption(dhcpv6.OptServerID(&s.serverDuid))
 
 	err = s.process(msg, req, resp)
 	if err != nil {
@@ -132,7 +132,7 @@ func (s *DHCPv6Handler) checkServerID(msg *dhcpv6.Message) error {
 			return fmt.Errorf("dhcpv6: drop packet: no ServerID option in message %s", msg.Type().String())
 		}
 
-		if !sid.Equal(s.serverDuid) {
+		if !sid.Equal(&s.serverDuid) {
 			return fmt.Errorf("dhcpv6: drop packet: mismatched ServerID option in message %s: %s",
 				msg.Type().String(), sid.String())
 		}
@@ -244,9 +244,8 @@ func main() {
 
 	dhcpv6Handler := DHCPv6Handler{
 		baseAddress: net.ParseIP(*baseAddress),
-		serverDuid: dhcpv6.Duid{
-			Type:          dhcpv6.DUID_LLT,
-			HwType:        iana.HWTypeEthernet,
+		serverDuid: dhcpv6.DUIDLLT{
+			HWType:        iana.HWTypeEthernet,
 			LinkLayerAddr: iface.HardwareAddr,
 			Time:          dhcpv6.GetTime(),
 		},
