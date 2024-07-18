@@ -18,7 +18,7 @@ env:
 
 jobs:
   Checks:
-    runs-on: ubuntu-latest
+    runs-on: UbuntuLatest32Cores128G
     permissions:
       id-token: "write"
       contents: "read"
