@@ -2,11 +2,11 @@
   "nodes": {
     "nix-filter": {
       "locked": {
-        "lastModified": 1666547822,
-        "narHash": "sha256-razwnAybPHyoAyhkKCwXdxihIqJi1G6e1XP4FQOJTEs=",
+        "lastModified": 1710156097,
+        "narHash": "sha256-1Wvk8UP7PXdf8bCCaEoMnOT1qe5/Duqgj+rL8sRQsSM=",
         "owner": "numtide",
         "repo": "nix-filter",
-        "rev": "1a3b735e13e90a8d2fd5629f2f8363bd7ffbbec7",
+        "rev": "3342559a24e85fc164b295c3444e8a139924675b",
         "type": "github"
       },
       "original": {
@@ -17,17 +17,16 @@
     },
     "nixpkgs": {
       "locked": {
-        "lastModified": 1667969101,
-        "narHash": "sha256-GL53T705HO7Q/KVfbb5STx8AxFs8YgaGY8pvAZC+O7U=",
-        "owner": "NixOS",
-        "repo": "nixpkgs",
-        "rev": "bbf77421ac51a7c93f5f0f760da99e4dbce614fa",
-        "type": "github"
+        "lastModified": 1721138476,
+        "narHash": "sha256-+W5eZOhhemLQxelojLxETfbFbc19NWawsXBlapYpqIA=",
+        "rev": "ad0b5eed1b6031efaed382844806550c3dcb4206",
+        "revCount": 654036,
+        "type": "tarball",
+        "url": "https://api.flakehub.com/f/pinned/NixOS/nixpkgs/0.1.654036%2Brev-ad0b5eed1b6031efaed382844806550c3dcb4206/0190c64a-dde0-7c5e-aba5-d2ad1178d6d8/source.tar.gz"
       },
       "original": {
-        "id": "nixpkgs",
-        "ref": "nixos-unstable-small",
-        "type": "indirect"
+        "type": "tarball",
+        "url": "https://flakehub.com/f/NixOS/nixpkgs/0.1.533189.tar.gz"
       }
     },
     "root": {

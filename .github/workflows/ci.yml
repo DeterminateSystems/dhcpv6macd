@@ -1,77 +1,73 @@
-name: Build
-
+name: CI
 on:
-  push:
-    branches: [ "main" ]
   pull_request:
-    branches: [ "main" ]
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+      - master
+    tags:
+      - "v?[0-9]+.[0-9]+.[0-9]+*"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 env:
   CARGO_TERM_COLOR: always
 
 jobs:
-  format:
-    runs-on: ubuntu-latest
+  Checks:
+    runs-on: UbuntuLatest32Cores128G
+    permissions:
+      id-token: "write"
+      contents: "read"
     steps:
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
         with:
-          fetch-depth: 0
-      - name: Install Nix
-        uses: DeterminateSystems/nix-installer-action@main
-      - name: Install magic Nix cache
-        uses: DeterminateSystems/magic-nix-cache-action@main
-      - name: Format
+          flakehub: true
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+
+      - uses: DeterminateSystems/flake-checker-action@main
+        if: ${{ always() }}
+
+      - name: Go Formatting
+        if: ${{ always() }}
         run: nix develop -c go fmt
+
       - name: Check diff
+        if: ${{ always() }}
         run: git diff --exit-code
-      - name: Check vet
+
+      - name: Go Vet
+        if: ${{ always() }}
         run: nix develop -c go vet
 
-
-  build:
-    runs-on: ubuntu-latest
-    steps:
-    - uses: actions/checkout@v3
-    - name: Install Nix
-      uses: DeterminateSystems/nix-installer-action@main
-      with:
-        # We don't _actually_ have kvm on the actions runners, so this
-        # will use TCG (CPU emulation) and thus be a fair bit
-        # slower. But we care more about the test running than about it
-        # running fast.
-        extra-conf: |
-          extra-system-features = kvm
-    - name: Install magic Nix cache
-      uses: DeterminateSystems/magic-nix-cache-action@main
-    - name: Build
-      run: nix build -L
-    - name: Test
-      run: nix flake check -L
-
-  Spelling:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Check Spelling
+        if: ${{ always() }}
         run: nix develop --command codespell --ignore-words-list crate,pullrequest,pullrequests --skip target .
 
-
-  NixFormatting:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Check nixpkgs-fmt formatting
+        if: ${{ always() }}
         run: git ls-files '*.nix' | nix develop --command xargs nixpkgs-fmt --check
 
-  EditorConfig:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: DeterminateSystems/nix-installer-action@main
-      - uses: DeterminateSystems/magic-nix-cache-action@main
       - name: Check EditorConfig conformance
+        if: ${{ always() }}
         run: nix develop --command eclint
+  DeterminateCI:
+    uses: DeterminateSystems/ci/.github/workflows/workflow.yml@main
+    needs: Checks
+    permissions:
+      id-token: "write"
+      contents: "read"
+    with:
+      visibility: public
+      runner-map: |
+        {
+          "aarch64-darwin": "macos-latest-xlarge",
+          "aarch64-linux": "UbuntuLatest32Cores128GArm",
+          "i686-linux": "UbuntuLatest32Cores128G",
+          "x86_64-darwin": "macos-latest-xlarge",
+          "x86_64-linux": "UbuntuLatest32Cores128G"
+        }
