@@ -8,6 +8,6 @@ require (
 	github.com/josharian/native v1.1.0 // indirect
 	github.com/pierrec/lz4/v4 v4.1.19 // indirect
 	github.com/u-root/uio v0.0.0-20230305220412-3e8cd9d6bf63 // indirect
-	golang.org/x/net v0.33.0 // indirect
-	golang.org/x/sys v0.28.0 // indirect
+	golang.org/x/net v0.38.0 // indirect
+	golang.org/x/sys v0.31.0 // indirect
 )
