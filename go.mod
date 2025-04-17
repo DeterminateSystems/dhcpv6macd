@@ -1,6 +1,8 @@
 module github.com/DeterminateSystems/dhcpv6macd
 
-go 1.19
+go 1.23.0
+
+toolchain go1.23.8
 
 require github.com/insomniacslk/dhcp v0.0.0-20231206064809-8c70d406f6d2
 
