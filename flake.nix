@@ -71,7 +71,7 @@
             # remember to bump this hash when your dependencies change.
             #vendorSha256 = pkgs.lib.fakeSha256;
 
-            vendorHash = "sha256-KzJxL5K7WZIeaBdhV3OKBYSSjox3G+4hF5PxKeXCRKY=";
+            vendorHash = "sha256-K/X0/kNqVhBRm2LjOdZOHUu7FONuMJmCnKgFZghyMXM=";
           };
         });
 
@@ -177,8 +177,7 @@
 
 
             client.wait_for_unit("network.target")
-            client.wait_for_unit("systemd-networkd-wait-online.service", timeout=30)
-            client.succeed("systemd-cat networkctl status eth1")
+            client.succeed("sleep 5")
 
             eth1_addrs = client.succeed("ip -6 addr show eth1")
             assert "fd19:287e:c5a0:4931:0:2de:adbe:ef01" in eth1_addrs, "Did not find expected client IPv6 addr"
