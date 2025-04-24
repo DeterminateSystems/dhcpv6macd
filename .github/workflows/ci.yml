@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@v4
 
       - uses: DeterminateSystems/flake-checker-action@main
-        if: success() || failure()
+        if: ${{ success() || failure() }}
         with:
           fail-mode: true
 
@@ -63,7 +63,7 @@ jobs:
       # We only need to run on one system because we're mostly checking for a hash mismatch, which
       # would be present on any system
       - name: Nix build package
-        if: ${{ always() }}
+        if: ${{ success() || failure() }}
         run: nix build
 
   DeterminateCI:
