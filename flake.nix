@@ -1,4 +1,4 @@
-x{
+{
   description = "dhcpv6macd";
 
   # Nixpkgs / NixOS version to use.
