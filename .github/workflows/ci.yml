@@ -24,13 +24,17 @@ jobs:
       contents: "read"
     steps:
       - uses: actions/checkout@v4
-      - uses: DeterminateSystems/nix-installer-action@main
-        with:
-          flakehub: true
-      - uses: DeterminateSystems/magic-nix-cache-action@main
 
       - uses: DeterminateSystems/flake-checker-action@main
         if: ${{ always() }}
+        with:
+          fail-mode: true
+
+      - uses: DeterminateSystems/nix-installer-action@main
+        with:
+          determinate: true
+
+      - uses: DeterminateSystems/flakehub-cache-action@main
 
       - name: Go Formatting
         if: ${{ always() }}
@@ -55,6 +59,13 @@ jobs:
       - name: Check EditorConfig conformance
         if: ${{ always() }}
         run: nix develop --command eclint
+
+      # We only need to run on one system because we're mostly checking for a hash mismatch, which
+      # would be present on any system
+      - name: Nix build package
+        if: ${{ always() }}
+        run: nix build
+
   DeterminateCI:
     uses: DeterminateSystems/ci/.github/workflows/workflow.yml@main
     needs: Checks

@@ -1,8 +1,8 @@
-{
+x{
   description = "dhcpv6macd";
 
   # Nixpkgs / NixOS version to use.
-  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1.533189.tar.gz";
+  inputs.nixpkgs.url = "https://flakehub.com/f/NixOS/nixpkgs/0.1";
   inputs.nix-filter.url = "github:numtide/nix-filter";
 
   outputs = { self, nixpkgs, nix-filter }:
@@ -72,6 +72,8 @@
             #vendorSha256 = pkgs.lib.fakeSha256;
 
             vendorHash = "sha256-KzJxL5K7WZIeaBdhV3OKBYSSjox3G+4hF5PxKeXCRKY=";
+
+            goSum = ./go.sum;
           };
         });
 
