@@ -24,13 +24,17 @@ jobs:
       contents: "read"
     steps:
       - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/flake-checker-action@main
+        if: ${{ success() || failure() }}
+        with:
+          fail-mode: true
+
       - uses: DeterminateSystems/nix-installer-action@main
         with:
           determinate: true
-      - uses: DeterminateSystems/flakehub-cache-action@main
 
-      - uses: DeterminateSystems/flake-checker-action@main
-        if: ${{ always() }}
+      - uses: DeterminateSystems/flakehub-cache-action@main
 
       - name: Go Formatting
         if: ${{ always() }}
@@ -55,6 +59,34 @@ jobs:
       - name: Check EditorConfig conformance
         if: ${{ always() }}
         run: nix develop --command eclint
+
+      # We only need to run on one system because we're mostly checking for a hash mismatch, which
+      # would be present on any system
+      - name: Nix build package
+        if: ${{ success() || failure() }}
+        run: nix build
+
+      - name: Fix hash mismatches
+        if: ${{ failure() && github.event_name == 'pull_request' }}
+        id: fix-hashes
+        run: |
+          git stash --include-untracked
+          git fetch --depth=1 origin "$GITHUB_HEAD_REF"
+          git checkout -B "$GITHUB_HEAD_REF" "${{ github.event.pull_request.head.sha }}"
+
+          determinate-nixd fix hashes --auto-apply
+
+          if ! git diff --quiet; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add --update --ignore-removal .
+            git commit -m "[dependabot skip] Automatically fix Nix hashes"
+            git push origin "$GITHUB_HEAD_REF"
+          fi
+
+          git checkout -
+          git stash pop || true
+
   DeterminateCI:
     uses: DeterminateSystems/ci/.github/workflows/workflow.yml@main
     needs: Checks
