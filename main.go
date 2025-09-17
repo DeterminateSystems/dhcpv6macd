@@ -15,7 +15,7 @@ import (
 // DHCPv6Handler offers DHCPv6 addresses based on the requestor's MAC address.
 type DHCPv6Handler struct {
 	baseAddress net.IP
-	serverDuid  dhcpv6.DUIDLLT
+	serverDuid  dhcpv6.DUIDLL
 }
 
 var (
@@ -243,10 +243,9 @@ func main() {
 
 	dhcpv6Handler := DHCPv6Handler{
 		baseAddress: net.ParseIP(*baseAddress),
-		serverDuid: dhcpv6.DUIDLLT{
+		serverDuid: dhcpv6.DUIDLL{
 			HWType:        iana.HWTypeEthernet,
 			LinkLayerAddr: iface.HardwareAddr,
-			Time:          dhcpv6.GetTime(),
 		},
 	}
 
