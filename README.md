@@ -9,10 +9,10 @@ You should only use this if:
 
 - You still need these clients to have stable IP addresses, even if they don't keep any state (frequent OS wipes!)
 
-
-We use this for macs where reprovisioning isn't 100% reliable, so we want them to get the same IP address even if _none of the scripts have run_.
+We use this for macOS where reprovisioning isn't 100% reliable, so we want them to get the same IP address even if _none of the scripts have run_.
 This is why we wrote this horrible hack.
 
+Note: this daemon may or may not work correctly with relay agent forwarding.
 
 ## Usage
 
@@ -29,6 +29,9 @@ See the `flake.nix` for a NixOS test involving router and a client.
 
 The prefix is assumed to be at least a /80.
 The MAC address is simply concatenated onto the prefix.
+
+If the DHCPv6 Solicit request does not have a MAC address, we fall back to loading the MAC from an eui64 link-local IP.
+Note that this only works if the Soliciting system encodes their MAC in their link local address via EUI-64 (privacy/stable-privacy LLAs won’t work.)
 
 ## What's not inside
 

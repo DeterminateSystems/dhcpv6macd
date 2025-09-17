@@ -73,7 +73,7 @@
             #vendorSha256 = pkgs.lib.fakeSha256;
 
             goSum = ./go.sum;
-            vendorHash = "sha256-K/X0/kNqVhBRm2LjOdZOHUu7FONuMJmCnKgFZghyMXM=";
+            vendorHash = "sha256-i7Cs1LdU7Juge77WaIaAdIAdjc2lfr9IALleGO3MaPI=";
           };
         });
 

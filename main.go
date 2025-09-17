@@ -10,9 +10,11 @@ import (
 	"github.com/insomniacslk/dhcp/dhcpv6"
 	"github.com/insomniacslk/dhcp/dhcpv6/server6"
 	"github.com/insomniacslk/dhcp/iana"
+
+	"github.com/mdlayher/netx/eui64"
 )
 
-// DHCPv6Handler offers DHCPv6 addresses based on the requestor's MAC address.
+// DHCPv6Handler offers DHCPv6 addresses based on the requester's MAC address.
 type DHCPv6Handler struct {
 	baseAddress net.IP
 	serverDuid  dhcpv6.DUIDLL
@@ -29,6 +31,32 @@ func (s *DHCPv6Handler) Handler(conn net.PacketConn, peer net.Addr, m dhcpv6.DHC
 	if err != nil {
 		log.Printf("error handling a message: %s", err.Error())
 	}
+}
+
+// getMACFromPeer attempts to extract a MAC address from the peer's IPv6 address
+// by parsing it as an EUI-64 link-local address (fe80::/64 with MAC in the lower 64 bits).
+// This only works if the client uses EUI-64 addressing; privacy addresses (RFC 4941) will fail.
+func getMACFromPeer(peer net.Addr) (net.HardwareAddr, error) {
+	peerUDPAddr, ok := peer.(*net.UDPAddr)
+	if !ok {
+		return nil, fmt.Errorf("peer %T is not a *net.UDPAddr", peer)
+	}
+
+	ip := peerUDPAddr.IP.To16()
+	if ip == nil {
+		return nil, fmt.Errorf("constructing a 16-byte IP failed: %s", peerUDPAddr)
+	}
+
+	if !ip.IsLinkLocalUnicast() {
+		return nil, fmt.Errorf("peer's IP (%s) isn't link-local (with the fe80:: prefix)", ip)
+	}
+
+	_, mac, err := eui64.ParseIP(ip)
+	if err != nil {
+		return nil, fmt.Errorf("parsing the IP (%s) into eui64 format failed: %s", ip, err)
+	}
+
+	return mac, nil
 }
 
 func (s *DHCPv6Handler) handleMsg(conn net.PacketConn, peer net.Addr,
@@ -85,7 +113,7 @@ func (s *DHCPv6Handler) handleMsg(conn net.PacketConn, peer net.Addr,
 
 	resp.AddOption(dhcpv6.OptServerID(&s.serverDuid))
 
-	err = s.process(msg, req, resp)
+	err = s.process(peer, msg, req, resp)
 	if err != nil {
 		return
 	}
@@ -164,7 +192,7 @@ func (s *DHCPv6Handler) checkIA(msg *dhcpv6.Message, expectedIP net.IP) error {
 	return nil
 }
 
-func (s *DHCPv6Handler) process(msg *dhcpv6.Message,
+func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 	req, resp dhcpv6.DHCPv6) (err error) {
 
 	switch msg.Type() {
@@ -182,8 +210,10 @@ func (s *DHCPv6Handler) process(msg *dhcpv6.Message,
 
 	mac, err := dhcpv6.ExtractMAC(msg)
 	if err != nil {
-		log.Printf("No MAC address in request: %v", err)
-		return fmt.Errorf("no MAC address")
+		mac, err = getMACFromPeer(peer)
+		if err != nil {
+			return fmt.Errorf("MAC extraction failed (not in DHCPv6 options, nor is it available from the peer address %s): %w", peer, err)
+		}
 	}
 	leasedIP = append(s.baseAddress[:10], mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
 	log.Printf("Assigning %v to %v", leasedIP, mac)
