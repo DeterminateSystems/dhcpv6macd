@@ -243,8 +243,8 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 
 	oiaAddr := &dhcpv6.OptIAAddress{
 		IPv6Addr:          leasedIP,
-		PreferredLifetime: 600 * time.Second,
-		ValidLifetime:     600 * time.Second,
+		PreferredLifetime: 1200 * time.Second,
+		ValidLifetime:     1200 * time.Second,
 	}
 
 	oia.Options = dhcpv6.IdentityOptions{
