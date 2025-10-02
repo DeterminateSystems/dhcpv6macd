@@ -260,6 +260,10 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 		resp.AddOption(fqdn)
 	}
 
+	if msg.IsOptionRequested(dhcpv6.OptionDNSRecursiveNameServer) {
+		dhcpv6.WithDNS(net.ParseIP("2606:4700:4700::1111"), net.ParseIP("2001:4860:4860::8888"))(resp)
+	}
+
 	resp.AddOption(&dhcpv6.OptStatusCode{
 		StatusCode:    iana.StatusSuccess,
 		StatusMessage: "success",
