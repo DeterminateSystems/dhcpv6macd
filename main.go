@@ -12,6 +12,7 @@ import (
 	"github.com/insomniacslk/dhcp/iana"
 )
 
+// DHCPv6Handler offers DHCPv6 addresses based on the requestor's MAC address.
 type DHCPv6Handler struct {
 	baseAddress net.IP
 	serverDuid  dhcpv6.DUIDLLT
@@ -23,10 +24,10 @@ var (
 )
 
 // Handler implements a server6.Handler.
-func (h *DHCPv6Handler) Handler(conn net.PacketConn, peer net.Addr, m dhcpv6.DHCPv6) {
-	err := h.handleMsg(conn, peer, m)
+func (s *DHCPv6Handler) Handler(conn net.PacketConn, peer net.Addr, m dhcpv6.DHCPv6) {
+	err := s.handleMsg(conn, peer, m)
 	if err != nil {
-		log.Printf(err.Error())
+		log.Printf("error handling a message: %s", err.Error())
 	}
 }
 
@@ -68,7 +69,6 @@ func (s *DHCPv6Handler) handleMsg(conn net.PacketConn, peer net.Addr,
 				return
 			}
 		}
-		break
 	case dhcpv6.MessageTypeRequest, dhcpv6.MessageTypeConfirm,
 		dhcpv6.MessageTypeRenew, dhcpv6.MessageTypeRebind,
 		dhcpv6.MessageTypeRelease, dhcpv6.MessageTypeInformationRequest:
@@ -78,9 +78,8 @@ func (s *DHCPv6Handler) handleMsg(conn net.PacketConn, peer net.Addr,
 			err = fmt.Errorf("DHCPv6 new reply from message error: %s", err)
 			return
 		}
-		break
 	default:
-		err = fmt.Errorf("Unknown DHCPv6 message type")
+		err = fmt.Errorf("unknown DHCPv6 message type")
 		return
 	}
 
@@ -184,7 +183,7 @@ func (s *DHCPv6Handler) process(msg *dhcpv6.Message,
 	mac, err := dhcpv6.ExtractMAC(msg)
 	if err != nil {
 		log.Printf("No MAC address in request: %v", err)
-		return fmt.Errorf("No MAC address")
+		return fmt.Errorf("no MAC address")
 	}
 	leasedIP = append(s.baseAddress[:10], mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
 	log.Printf("Assigning %v to %v", leasedIP, mac)

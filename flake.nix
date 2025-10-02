@@ -37,6 +37,7 @@
                   codespell
                   eclint
                   go
+                  go-tools
                   nixpkgs-fmt
                 ];
               };
