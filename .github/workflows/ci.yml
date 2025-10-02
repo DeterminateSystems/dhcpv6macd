@@ -50,6 +50,10 @@ jobs:
         if: ${{ success() || failure() }}
         run: nix develop -c go vet
 
+      - name: Go Lint
+        if: ${{ success() || failure() }}
+        run: nix develop -c golint
+
       - name: Check Spelling
         if: ${{ success() || failure() }}
         run: nix develop --command codespell --ignore-words-list crate,pullrequest,pullrequests --skip target .
