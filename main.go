@@ -201,6 +201,12 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 		dhcpv6.MessageTypeRebind:
 
 		break
+	case dhcpv6.MessageTypeRelease:
+		resp.AddOption(&dhcpv6.OptStatusCode{
+			StatusCode:    iana.StatusSuccess,
+			StatusMessage: "success",
+		})
+		return
 	default:
 		err = fmt.Errorf("DHCPv6 ignore message type %s", msg.Type())
 		return
