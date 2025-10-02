@@ -50,9 +50,9 @@ jobs:
         if: ${{ success() || failure() }}
         run: nix develop -c go vet
 
-      - name: Go Lint
+      - name: Go Staticcheck
         if: ${{ success() || failure() }}
-        run: nix develop -c golint
+        run: nix develop -c staticcheck
 
       - name: Check Spelling
         if: ${{ success() || failure() }}
