@@ -1,10 +1,14 @@
 package main
 
 import (
+	"bytes"
+	"encoding/base64"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log"
 	"net"
+	"text/template"
 	"time"
 
 	"github.com/insomniacslk/dhcp/dhcpv6"
@@ -21,9 +25,12 @@ type DHCPv6Handler struct {
 }
 
 var (
-	baseAddress      = flag.String("base-address", "fec0::", "IPv6 base address to distribute MAC-based IPs through, we assume its a /72")
-	networkInterface = flag.String("interface", "eth0", "Interface to listen on")
+	baseAddress         = flag.String("base-address", "fec0::", "IPv6 base address to distribute MAC-based IPs through, we assume its a /72")
+	networkInterface    = flag.String("interface", "eth0", "Interface to listen on")
+	httpBootURLTemplate = flag.String("http-boot-url-template", "", "URL template for HTTP boot requests, like http://netboot.target/?mac={{.MAC}}")
 )
+
+var httpBootTemplate *template.Template
 
 // Handler implements a server6.Handler.
 func (s *DHCPv6Handler) Handler(conn net.PacketConn, peer net.Addr, m dhcpv6.DHCPv6) {
@@ -192,8 +199,52 @@ func (s *DHCPv6Handler) checkIA(msg *dhcpv6.Message, expectedIP net.IP) error {
 	return nil
 }
 
+func wantsBootFile(msg *dhcpv6.Message) bool {
+	for _, vc := range msg.Options.VendorClasses() {
+		for _, data := range vc.Data {
+			if bytes.HasPrefix(data, []byte("HTTPClient")) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+type archPayload struct {
+	Architectures []string `json:"architectures"`
+}
+
+func archsToStrings(archs iana.Archs) []string {
+	out := make([]string, 0, len(archs))
+	for _, a := range archs {
+		out = append(out, a.String()) // e.g. "EFI_X86_64", "EFI_IA32"
+	}
+	return out
+}
+
+func archsToJSON(archs iana.Archs) (string, error) {
+	p := archPayload{Architectures: archsToStrings(archs)}
+	b, err := json.Marshal(p)
+	if err != nil {
+		return "", err
+	}
+	return string(b), nil
+}
+
+func archsToEncoded(archs iana.Archs) (string, error) {
+	j, err := archsToJSON(archs)
+	if err != nil {
+		return "", err
+	}
+	sEnc := base64.StdEncoding.EncodeToString([]byte(j))
+	return sEnc, nil
+}
+
 func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 	req, resp dhcpv6.DHCPv6) (err error) {
+
+	log.Println("Message received", msg, msg.Options)
 
 	switch msg.Type() {
 	case dhcpv6.MessageTypeSolicit, dhcpv6.MessageTypeRequest,
@@ -264,6 +315,30 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 		dhcpv6.WithDNS(net.ParseIP("2606:4700:4700::1111"), net.ParseIP("2001:4860:4860::8888"))(resp)
 	}
 
+	if httpBootTemplate != nil && wantsBootFile(msg) {
+		payload, err := archsToEncoded(msg.Options.ArchTypes())
+		if err != nil {
+			log.Printf("failed to construct the arch payload: %s", err)
+		}
+
+		var buf bytes.Buffer
+		if err := httpBootTemplate.Execute(&buf, map[string]string{
+			"MAC":         mac.String(),
+			"BaseAddress": *baseAddress,
+			"Payload":     payload,
+		}); err != nil {
+			log.Printf("failed to render the http boot template: %v", err)
+		} else {
+			resp.AddOption(&dhcpv6.OptVendorClass{
+				EnterpriseNumber: 0,
+				Data:             [][]byte{[]byte("HTTPClient")},
+			})
+
+			// ref: https://lenovopress.lenovo.com/lp0736.pdf
+			resp.AddOption(dhcpv6.OptBootFileURL(buf.String()))
+		}
+	}
+
 	resp.AddOption(&dhcpv6.OptStatusCode{
 		StatusCode:    iana.StatusSuccess,
 		StatusMessage: "success",
@@ -274,6 +349,15 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 
 func main() {
 	flag.Parse()
+
+	var err error
+
+	if *httpBootURLTemplate != "" {
+		httpBootTemplate, err = template.New("httpBootURL").Parse(*httpBootURLTemplate)
+		if err != nil {
+			log.Fatalf("failed to parse template: %v", err)
+		}
+	}
 
 	iface, err := net.InterfaceByName(*networkInterface)
 	if err != nil {

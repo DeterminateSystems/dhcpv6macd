@@ -9,16 +9,31 @@ You should only use this if:
 
 - You still need these clients to have stable IP addresses, even if they don't keep any state (frequent OS wipes!)
 
-We use this for macOS where reprovisioning isn't 100% reliable, so we want them to get the same IP address even if _none of the scripts have run_.
-This is why we wrote this horrible hack.
+We use this for macOS and a HITL where reprovisioning isn't 100% reliable, so we want them to get the same IP address even if _none of the scripts have run_.
 
-Note: this daemon may or may not work correctly with relay agent forwarding.
+Notes:
+
+- this daemon may or may not work correctly with relay agent forwarding.
+- this daemon will not try to issue HTTP Boot instructions if the template is an empty string.
+  If you don't want that, feel free to PR it into an optional setting.
 
 ## Usage
 
-```
+```sh
 go build .
-sudo ./dhcpv6macd -interface enp2s0 -base-address 2001:db8:0123:4567::
+sudo ./dhcpv6macd -interface enp2s0 -base-address 2001:db8:0123:4567:: -http-boot-url-template 'http://netboot.target/?mac={{.MAC}}'
+```
+
+...where the template can use these parameters:
+
+- `MAC` -- the MAC address of the netbooting device
+- `BaseAddress` -- the same value as passed in the CLI arguments
+- `Payload` -- a base64 encoded JSON blob about the booting device, for example `eyJhcmNoaXRlY3R1cmVzIjpbIkVGSSB4ODYtNjQgYm9vdCBmcm9tIEhUVFAiXX0=` which is decodes to:
+
+```json
+{
+  "architectures": ["EFI x86-64 boot from HTTP"]
+}
 ```
 
 There is also a NixOS module in the flake.nix.

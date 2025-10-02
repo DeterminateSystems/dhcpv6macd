@@ -96,6 +96,13 @@
                   The MAC address is simply concatenated onto the prefix.
                 '';
               };
+              httpBootUrlTemplate = lib.mkOption {
+                type = lib.types.str;
+                default = "";
+                description = lib.mdDoc ''
+                  `http://[{{.BaseAddress}}]/?mac={{.MAC}}&payload={{.Payload}}`
+                '';
+              };
             };
           };
           config = let cfg = config.services.detsys.dhcpv6macd; in lib.mkIf cfg.enable {
@@ -116,6 +123,8 @@
                   cfg.interface
                   "-base-address"
                   cfg.baseAddress
+                  "-http-boot-url-template"
+                  cfg.httpBootUrlTemplate
                 ]);
               };
             };
