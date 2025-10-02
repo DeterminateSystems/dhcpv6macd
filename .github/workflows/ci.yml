@@ -31,33 +31,35 @@ jobs:
           fail-mode: true
 
       - uses: DeterminateSystems/nix-installer-action@main
+        if: ${{ success() || failure() }}
         with:
           determinate: true
 
       - uses: DeterminateSystems/flakehub-cache-action@main
+        if: ${{ success() || failure() }}
 
       - name: Go Formatting
-        if: ${{ always() }}
+        if: ${{ success() || failure() }}
         run: nix develop -c go fmt
 
       - name: Check diff
-        if: ${{ always() }}
+        if: ${{ success() || failure() }}
         run: git diff --exit-code
 
       - name: Go Vet
-        if: ${{ always() }}
+        if: ${{ success() || failure() }}
         run: nix develop -c go vet
 
       - name: Check Spelling
-        if: ${{ always() }}
+        if: ${{ success() || failure() }}
         run: nix develop --command codespell --ignore-words-list crate,pullrequest,pullrequests --skip target .
 
       - name: Check nixpkgs-fmt formatting
-        if: ${{ always() }}
+        if: ${{ success() || failure() }}
         run: git ls-files '*.nix' | nix develop --command xargs nixpkgs-fmt --check
 
       - name: Check EditorConfig conformance
-        if: ${{ always() }}
+        if: ${{ success() || failure() }}
         run: nix develop --command eclint
 
       # We only need to run on one system because we're mostly checking for a hash mismatch, which
