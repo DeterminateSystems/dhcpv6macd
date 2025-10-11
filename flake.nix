@@ -15,7 +15,7 @@
       version = builtins.substring 0 8 lastModifiedDate;
 
       # System types to support.
-      supportedSystems = [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
 
       # Helper function to generate an attrset '{ x86_64-linux = f "x86_64-linux"; ... }'.
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
@@ -47,6 +47,7 @@
       packages = forAllSystems (system:
         let
           pkgs = nixpkgsFor.${system};
+          pkgsX8664Linux = nixpkgsFor.x86_64-linux;
         in
         {
           default = pkgs.buildGoModule {
@@ -62,10 +63,16 @@
               ];
             };
 
-            PXE = pkgs.ipxe;
+            PXE = pkgsX8664Linux.ipxe;
 
             postPatch = ''
-              cp $PXE/ipxe.efi ./ipxe.efi
+              if [ -f ./ipxe.efi ]; then
+                rm ./ipxe.efi
+              fi
+
+              if [ ! -z $PXE ]; then
+                cp $PXE/ipxe.efi ./ipxe.efi
+              fi
             '';
 
             # This hash locks the dependencies of this package. It is
