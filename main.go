@@ -199,10 +199,22 @@ func (s *DHCPv6Handler) checkIA(msg *dhcpv6.Message, expectedIP net.IP) error {
 	return nil
 }
 
-func wantsBootFile(msg *dhcpv6.Message) bool {
+func wantsHttpBootFile(msg *dhcpv6.Message) bool {
 	for _, vc := range msg.Options.VendorClasses() {
 		for _, data := range vc.Data {
 			if bytes.HasPrefix(data, []byte("HTTPClient")) {
+				return true
+			}
+		}
+	}
+
+	return false
+}
+
+func wantsPxeBootFile(msg *dhcpv6.Message) bool {
+	for _, vc := range msg.Options.VendorClasses() {
+		for _, data := range vc.Data {
+			if bytes.HasPrefix(data, []byte("PXEClient")) {
 				return true
 			}
 		}
@@ -315,27 +327,31 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 		dhcpv6.WithDNS(net.ParseIP("2606:4700:4700::1111"), net.ParseIP("2001:4860:4860::8888"))(resp)
 	}
 
-	if httpBootTemplate != nil && wantsBootFile(msg) {
-		payload, err := archsToEncoded(msg.Options.ArchTypes())
-		if err != nil {
-			log.Printf("failed to construct the arch payload: %s", err)
-		}
+	if httpBootTemplate != nil {
+		if wantsHttpBootFile(msg) {
+			payload, err := archsToEncoded(msg.Options.ArchTypes())
+			if err != nil {
+				log.Printf("failed to construct the arch payload: %s", err)
+			}
 
-		var buf bytes.Buffer
-		if err := httpBootTemplate.Execute(&buf, map[string]string{
-			"MAC":         mac.String(),
-			"BaseAddress": *baseAddress,
-			"Payload":     payload,
-		}); err != nil {
-			log.Printf("failed to render the http boot template: %v", err)
-		} else {
-			resp.AddOption(&dhcpv6.OptVendorClass{
-				EnterpriseNumber: 0,
-				Data:             [][]byte{[]byte("HTTPClient")},
-			})
+			var buf bytes.Buffer
+			if err := httpBootTemplate.Execute(&buf, map[string]string{
+				"MAC":         mac.String(),
+				"BaseAddress": *baseAddress,
+				"Payload":     payload,
+			}); err != nil {
+				log.Printf("failed to render the http boot template: %v", err)
+			} else {
+				resp.AddOption(&dhcpv6.OptVendorClass{
+					EnterpriseNumber: 0,
+					Data:             [][]byte{[]byte("HTTPClient")},
+				})
 
-			// ref: https://lenovopress.lenovo.com/lp0736.pdf
-			resp.AddOption(dhcpv6.OptBootFileURL(buf.String()))
+				// ref: https://lenovopress.lenovo.com/lp0736.pdf
+				resp.AddOption(dhcpv6.OptBootFileURL(buf.String()))
+			}
+		} else if wantsPxeBootFile(msg) {
+
 		}
 	}
 
