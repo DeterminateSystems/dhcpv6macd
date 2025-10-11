@@ -2,12 +2,15 @@ package main
 
 import (
 	"bytes"
+	_ "embed"
 	"encoding/base64"
 	"encoding/json"
 	"flag"
 	"fmt"
+	"io"
 	"log"
 	"net"
+	"os"
 	"text/template"
 	"time"
 
@@ -16,7 +19,11 @@ import (
 	"github.com/insomniacslk/dhcp/iana"
 
 	"github.com/mdlayher/netx/eui64"
+	"github.com/pin/tftp/v3"
 )
+
+//go:embed ipxe.efi
+var ipxe_efi_x86_64 []byte
 
 // DHCPv6Handler offers DHCPv6 addresses based on the requester's MAC address.
 type DHCPv6Handler struct {
@@ -211,7 +218,7 @@ func wantsHttpBootFile(msg *dhcpv6.Message) bool {
 	return false
 }
 
-func wantsPxeBootFile(msg *dhcpv6.Message) bool {
+func isPxeClient(msg *dhcpv6.Message) bool {
 	for _, vc := range msg.Options.VendorClasses() {
 		for _, data := range vc.Data {
 			if bytes.HasPrefix(data, []byte("PXEClient")) {
@@ -221,6 +228,32 @@ func wantsPxeBootFile(msg *dhcpv6.Message) bool {
 	}
 
 	return false
+}
+
+func isUserIpxe(msg *dhcpv6.Message) bool {
+	for _, uc := range msg.Options.UserClasses() {
+		if bytes.HasPrefix(uc, []byte("iPXE")) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func wantsiPxeOverTftp(msg *dhcpv6.Message) bool {
+	if !isPxeClient(msg) {
+		return false
+	}
+
+	if isUserIpxe(msg) {
+		return false
+	}
+
+	return true
+}
+
+func wantsiPxeChainToHttp(msg *dhcpv6.Message) bool {
+	return isPxeClient(msg) && isUserIpxe(msg)
 }
 
 type archPayload struct {
@@ -350,8 +383,25 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 				// ref: https://lenovopress.lenovo.com/lp0736.pdf
 				resp.AddOption(dhcpv6.OptBootFileURL(buf.String()))
 			}
-		} else if wantsPxeBootFile(msg) {
+		} else if wantsiPxeOverTftp(msg) {
 			resp.AddOption(dhcpv6.OptBootFileURL(fmt.Sprintf("tftp://[%s]/%s/ipxe.efi", *baseAddress, mac.String())))
+		} else if wantsiPxeChainToHttp(msg) {
+
+			payload, err := archsToEncoded(msg.Options.ArchTypes())
+			if err != nil {
+				log.Printf("failed to construct the arch payload: %s", err)
+			}
+
+			var buf bytes.Buffer
+			if err := httpBootTemplate.Execute(&buf, map[string]string{
+				"MAC":         mac.String(),
+				"BaseAddress": *baseAddress,
+				"Payload":     payload,
+			}); err != nil {
+				log.Printf("failed to render the http boot template: %v", err)
+			} else {
+				resp.AddOption(dhcpv6.OptBootFileURL(buf.String()))
+			}
 		}
 	}
 
@@ -361,6 +411,19 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 	})
 
 	return
+}
+
+func tftpReadHandler(filename string, rf io.ReaderFrom) error {
+	fmt.Println("Serving ", filename)
+	r := bytes.NewReader(ipxe_efi_x86_64)
+	n, err := rf.ReadFrom(r)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "%v\n", err)
+		return err
+	}
+	fmt.Printf("%d bytes sent for %s\n", n, filename)
+	return nil
+
 }
 
 func main() {
@@ -399,6 +462,17 @@ func main() {
 		IP:   net.IPv6unspecified,
 		Port: dhcpv6.DefaultServerPort,
 	}
+
+	go func() {
+		log.Printf("Starting the TFTP server on port 69")
+		tftpServer := tftp.NewServer(tftpReadHandler, nil)
+		tftpServer.SetTimeout(5 * time.Second) // optional
+		err = tftpServer.ListenAndServe(":69") // blocks until s.Shutdown() is called
+		if err != nil {
+			fmt.Fprintf(os.Stdout, "starting TFTP server: %v\n", err)
+			os.Exit(1)
+		}
+	}()
 
 	server, err := server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
 	if err != nil {
