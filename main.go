@@ -351,7 +351,7 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 				resp.AddOption(dhcpv6.OptBootFileURL(buf.String()))
 			}
 		} else if wantsPxeBootFile(msg) {
-
+			resp.AddOption(dhcpv6.OptBootFileURL(fmt.Sprintf("tftp://[%s]/%s/ipxe.efi", *baseAddress, mac.String())))
 		}
 	}
 
