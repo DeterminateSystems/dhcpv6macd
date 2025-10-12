@@ -133,7 +133,9 @@
             let
               cfg = config.services.detsys.dhcpv6macd;
               package = self.packages."${pkgs.stdenv.system}".default.overrideAttrs {
-                PXE = nixpkgsFor.x86_64-linux.ipxe.overrideAttrs ({ makeFlags, ... }: {
+                PXE = nixpkgsFor.x86_64-linux.ipxe.overrideAttrs ({ makeFlags, ... }@oldAttrs: {
+                  patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
+                    ++ [ ./ipxe-uki.patch ];
                   makeFlags = makeFlags ++ (lib.optional (cfg.httpBootRootCertificate != null)
                     ''TRUST=${cfg.httpBootRootCertificate}'')
                   ;
