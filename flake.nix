@@ -15,7 +15,7 @@
       version = builtins.substring 0 8 lastModifiedDate;
 
       # System types to support.
-      supportedSystems = [ "x86_64-linux" "x86_64-darwin" "aarch64-linux" "aarch64-darwin" ];
+      supportedSystems = [ "x86_64-linux" "aarch64-linux" "aarch64-darwin" ];
 
       # Helper function to generate an attrset '{ x86_64-linux = f "x86_64-linux"; ... }'.
       forAllSystems = nixpkgs.lib.genAttrs supportedSystems;
@@ -47,6 +47,7 @@
       packages = forAllSystems (system:
         let
           pkgs = nixpkgsFor.${system};
+          pkgsX8664Linux = nixpkgsFor.x86_64-linux;
         in
         {
           default = pkgs.buildGoModule {
@@ -62,6 +63,18 @@
               ];
             };
 
+            PXE = pkgsX8664Linux.ipxe;
+
+            postPatch = ''
+              if [ -f ./ipxe.efi ]; then
+                rm ./ipxe.efi
+              fi
+
+              if [ ! -z $PXE ]; then
+                cp $PXE/ipxe.efi ./ipxe.efi
+              fi
+            '';
+
             # This hash locks the dependencies of this package. It is
             # necessary because of how Go requires network access to resolve
             # VCS.  See https://www.tweag.io/blog/2021-03-04-gomod2nix/ for
@@ -73,7 +86,7 @@
             #vendorSha256 = pkgs.lib.fakeSha256;
 
             goSum = ./go.sum;
-            vendorHash = "sha256-i7Cs1LdU7Juge77WaIaAdIAdjc2lfr9IALleGO3MaPI=";
+            vendorHash = "sha256-l9EtzQUYhQkTX3+7FKdBgT389n5lh9aKPrqlBmkhK+E=";
           };
         });
 
@@ -103,32 +116,51 @@
                   `http://[{{.BaseAddress}}]/?mac={{.MAC}}&payload={{.Payload}}`
                 '';
               };
-            };
-          };
-          config = let cfg = config.services.detsys.dhcpv6macd; in lib.mkIf cfg.enable {
-            networking.firewall.interfaces."${cfg.interface}" = {
-              allowedUDPPorts = [ 547 ];
-              allowedTCPPorts = [ 547 ];
-            };
-
-            systemd.services.dhcpv6macd = {
-              wantedBy = [ "multi-user.target" ];
-              serviceConfig = {
-                DynamicUser = true;
-                AmbientCapabilities = "CAP_NET_BIND_SERVICE";
-                ProtectSystem = "strict";
-                ExecStart = "${self.packages."${pkgs.stdenv.system}".default}/bin/dhcpv6macd "
-                  + (lib.escapeShellArgs [
-                  "-interface"
-                  cfg.interface
-                  "-base-address"
-                  cfg.baseAddress
-                  "-http-boot-url-template"
-                  cfg.httpBootUrlTemplate
-                ]);
+              httpBootRootCertificate = lib.mkOption {
+                type = lib.types.nullOr lib.types.path;
+                default = null;
+                description = lib.mdDoc ''
+                  Path to a root CA certificate to embed in the iPXE binary for HTTPS boot URL validation.
+                  Required when httpBootUrlTemplate uses HTTPS and the server certificate is not signed by a well-known CA.
+                '';
               };
             };
           };
+          config =
+            let
+              cfg = config.services.detsys.dhcpv6macd;
+              package = self.packages."${pkgs.stdenv.system}".default.overrideAttrs {
+                PXE = nixpkgsFor.x86_64-linux.ipxe.overrideAttrs ({ makeFlags, ... }: {
+                  makeFlags = makeFlags ++ (lib.optional (cfg.httpBootRootCertificate != null)
+                    ''TRUST=${cfg.httpBootRootCertificate}'')
+                  ;
+                });
+              };
+            in
+            lib.mkIf cfg.enable {
+              networking.firewall.interfaces."${cfg.interface}" = {
+                allowedUDPPorts = [ 547 69 ];
+                allowedTCPPorts = [ 547 ];
+              };
+
+              systemd.services.dhcpv6macd = {
+                wantedBy = [ "multi-user.target" ];
+                serviceConfig = {
+                  DynamicUser = true;
+                  AmbientCapabilities = "CAP_NET_BIND_SERVICE";
+                  ProtectSystem = "strict";
+                  ExecStart = "${package}/bin/dhcpv6macd "
+                    + (lib.escapeShellArgs [
+                    "-interface"
+                    cfg.interface
+                    "-base-address"
+                    cfg.baseAddress
+                    "-http-boot-url-template"
+                    cfg.httpBootUrlTemplate
+                  ]);
+                };
+              };
+            };
         };
       };
 

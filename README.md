@@ -40,6 +40,23 @@ There is also a NixOS module in the flake.nix.
 
 See the `flake.nix` for a NixOS test involving router and a client.
 
+### iPXE Chaining
+
+The daemon also listens on port 69/udp for serving TFTP requests.
+Currently, all requests that arrive over TFTP will be served the exact same `ipxe.efi`, which is compiled in to the binary.
+In the future, it may expand to support other architectures.
+
+The ipxe.efi binary is only served if the client requests PXE booting.
+The daemon tells the client to fetch ipxe from `tftp://[baseAddr]/clientMacAddr/ipxe.efi`.
+When iPXE starts, it automatically starts dhcp again, and it will chain to the templatized HTTP boot url option.
+
+### Root certificate tweaking
+
+The NixOS module exposes an option to set the root CA certificate for HTTPS chaining.
+Setting that option rebuilds ipxe with that certificate as the root trust anchor.
+
+The built ipxe.efi is then copied in to the build directory of dhcpv6macd for compiling in to the daemon.
+
 ## Address allocation scheme
 
 The prefix is assumed to be at least a /80.
