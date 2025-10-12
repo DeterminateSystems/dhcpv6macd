@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	_ "embed"
 	"encoding/base64"
 	"encoding/json"
@@ -10,6 +11,9 @@ import (
 	"io"
 	"log"
 	"net"
+	"os"
+	"slices"
+	"strings"
 	"text/template"
 	"time"
 
@@ -37,6 +41,9 @@ var (
 )
 
 var httpBootTemplate *template.Template
+
+var machines Machines
+var broker *Broker
 
 // Handler implements a server6.Handler.
 func (s *DHCPv6Handler) Handler(conn net.PacketConn, peer net.Addr, m dhcpv6.DHCPv6) {
@@ -317,6 +324,8 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 		}
 	}
 
+	machine := machines.GetMachine(mac)
+
 	prefix := make([]byte, 10)
 	copy(prefix, s.baseAddress[:10])
 	leasedIP = append(prefix, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
@@ -365,6 +374,7 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 
 	if httpBootTemplate != nil {
 		if wantsHttpBootFile(msg) {
+			machine.Event(context.Background(), "http_boot")
 			payload, err := archsToEncoded(msg.Options.ArchTypes())
 			if err != nil {
 				log.Printf("failed to construct the arch payload: %s", err)
@@ -387,9 +397,10 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 				resp.AddOption(dhcpv6.OptBootFileURL(buf.String()))
 			}
 		} else if wantsiPxeOverTftp(msg) {
+			machine.Event(context.Background(), "point_pxe_to_ipxe_over_tftp")
 			resp.AddOption(dhcpv6.OptBootFileURL(fmt.Sprintf("tftp://[%s]/%s/ipxe.efi", *baseAddress, mac.String())))
 		} else if wantsiPxeChainToHttp(msg) {
-
+			machine.Event(context.Background(), "point_ipxe_to_http_boot")
 			payload, err := archsToEncoded(msg.Options.ArchTypes())
 			if err != nil {
 				log.Printf("failed to construct the arch payload: %s", err)
@@ -405,6 +416,17 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 			} else {
 				resp.AddOption(dhcpv6.OptBootFileURL(buf.String()))
 			}
+		} else {
+			if (msg.Type() == dhcpv6.MessageTypeSolicit || msg.Type() == dhcpv6.MessageTypeRequest) &&
+				msg.Options.ArchTypes() == nil &&
+				slices.Equal(msg.Options.RequestedOptions(), dhcpv6.OptionCodes{dhcpv6.OptionDNSRecursiveNameServer}) {
+				// Firmware seems to make a follow-up solicit/request for just DNS, which should not move us to os_init
+				log.Printf("Detected firmware DNS follow-up request, skipping state transition")
+			} else if msg.Options.ArchTypes() == nil {
+				machine.Event(context.Background(), "os_init")
+			} else {
+				machine.Event(context.Background(), "firmware_init")
+			}
 		}
 	}
 
@@ -416,8 +438,32 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 	return
 }
 
+func parseMACFromPath(s string) (net.HardwareAddr, error) {
+	// Split at the slash ("/") to isolate the MAC part
+	parts := strings.SplitN(s, "/", 2)
+	macPart := parts[0]
+
+	// Parse the MAC address
+	mac, err := net.ParseMAC(macPart)
+	if err != nil {
+		return nil, fmt.Errorf("invalid MAC address: %w", err)
+	}
+
+	return mac, nil
+}
+
 func tftpReadHandler(filename string, rf io.ReaderFrom) error {
+	mac, err := parseMACFromPath(filename)
+	if err != nil {
+		log.Println("Can't parse a MAC from ", filename, err)
+		return err
+	}
+
 	log.Println("Serving ", filename)
+
+	machine := machines.GetMachine(mac)
+	machine.Event(context.Background(), "served_ipxe_over_tftp")
+
 	r := bytes.NewReader(ipxe_efi_x86_64)
 	n, err := rf.ReadFrom(r)
 	if err != nil {
@@ -471,6 +517,9 @@ func main() {
 		Port: dhcpv6.DefaultServerPort,
 	}
 
+	machines = make(Machines)
+	broker = NewBroker()
+
 	go func() {
 		log.Printf("Starting the TFTP server on port 69")
 		tftpServer := tftp.NewServer(tftpReadHandler, nil)
@@ -479,6 +528,15 @@ func main() {
 		e := tftpServer.ListenAndServe(":69") // blocks until s.Shutdown() is called
 		if e != nil {
 			log.Fatalf("starting TFTP server: %v", e)
+		}
+	}()
+
+	go func() {
+		log.Printf("Starting the webserver server on port 6315")
+		err := webserver(":6315", broker, &machines)
+		if err != nil {
+			log.Printf("starting webserver: %v\n", err)
+			os.Exit(1)
 		}
 	}()
 
