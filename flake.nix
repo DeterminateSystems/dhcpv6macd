@@ -119,6 +119,10 @@
               httpBootRootCertificate = lib.mkOption {
                 type = lib.types.nullOr lib.types.path;
                 default = null;
+                description = lib.mdDoc ''
+                  Path to a root CA certificate to embed in the iPXE binary for HTTPS boot URL validation.
+                  Required when httpBootUrlTemplate uses HTTPS and the server certificate is not signed by a well-known CA.
+                '';
               };
             };
           };
@@ -126,7 +130,7 @@
             let
               cfg = config.services.detsys.dhcpv6macd;
               package = self.packages."${pkgs.stdenv.system}".default.overrideAttrs {
-                PXE = pkgs.ipxe.overrideAttrs ({ makeFlags, ... }: {
+                PXE = nixpkgsFor.x86_64-linux.ipxe.overrideAttrs ({ makeFlags, ... }: {
                   makeFlags = makeFlags ++ (lib.optional (cfg.httpBootRootCertificate != null)
                     ''TRUST=${cfg.httpBootRootCertificate}'')
                   ;
