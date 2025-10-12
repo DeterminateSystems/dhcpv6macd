@@ -63,7 +63,10 @@
               ];
             };
 
-            PXE = pkgsX8664Linux.ipxe;
+            PXE = pkgsX8664Linux.ipxe.overrideAttrs (oldAttrs: {
+              patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
+                ++ [ ./ipxe-uki.patch ];
+            });
 
             postPatch = ''
               if [ -f ./ipxe.efi ]; then

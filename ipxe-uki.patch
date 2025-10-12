@@ -1,0 +1,26 @@
+From 0ceabf183a9887a7779f69b90d3beda8910ad323 Mon Sep 17 00:00:00 2001
+From: Cole Mickens <cole.mickens@determinate.systems>
+Date: Sat, 11 Oct 2025 21:50:17 -0400
+Subject: [PATCH] image/efi_image.c: Do not set LoadOptions
+
+---
+ src/image/efi_image.c | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/src/image/efi_image.c b/src/image/efi_image.c
+index e7b19c4ce4..e6e51827aa 100644
+--- a/src/image/efi_image.c
++++ b/src/image/efi_image.c
+@@ -287,10 +287,7 @@ static int efi_image_exec ( struct image *image ) {
+ 	/* Record image code type */
+ 	type = loaded->ImageCodeType;
+ 
+-	/* Set command line */
+-	loaded->LoadOptions = cmdline;
+-	loaded->LoadOptionsSize =
+-		( ( wcslen ( cmdline ) + 1 /* NUL */ ) * sizeof ( wchar_t ) );
++	/* Do not set command line */
+ 
+ 	/* Release network devices for use via SNP */
+ 	efi_snp_release();
+
