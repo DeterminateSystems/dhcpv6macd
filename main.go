@@ -19,6 +19,7 @@ import (
 	"github.com/insomniacslk/dhcp/iana"
 
 	"github.com/mdlayher/netx/eui64"
+	zmq "github.com/pebbe/zmq4/draft"
 	"github.com/pin/tftp/v3"
 )
 
@@ -32,6 +33,7 @@ type DHCPv6Handler struct {
 }
 
 var (
+	zmqdump             = flag.Bool("zmqdump", false, "Spew zeromq data instead of anything else")
 	baseAddress         = flag.String("base-address", "fec0::", "IPv6 base address to distribute MAC-based IPs through, we assume its a /72")
 	networkInterface    = flag.String("interface", "eth0", "Interface to listen on")
 	httpBootURLTemplate = flag.String("http-boot-url-template", "", "URL template for HTTP boot requests, like http://netboot.target/?mac={{.MAC}}")
@@ -428,8 +430,61 @@ func tftpReadHandler(filename string, rf io.ReaderFrom) error {
 
 func main() {
 	flag.Parse()
-
 	var err error
+
+	endpoint := fmt.Sprintf("udp://[ff08::%%%s]:5555", *networkInterface)
+	if *zmqdump {
+		dish, err := zmq.NewSocket(zmq.DISH)
+		if err != nil {
+			log.Fatal(err)
+		}
+		defer dish.Close()
+
+		if err := dish.Bind(endpoint); err != nil {
+			log.Fatal(err)
+		}
+
+		// Join a group (RADIO tags messages with a group; DISH only receives those it joined).
+		if err := dish.Join("news"); err != nil { // group <=16 chars in current spec
+			log.Fatal(err)
+		}
+
+		for {
+			fmt.Println(":computers:")
+			// RADIO/DISH are single-part messages.
+			b, err := dish.RecvBytes(0)
+			if err != nil {
+				log.Fatal(err)
+			}
+			// If you need the message’s group, use the draft message API (exposed by the binding) to read the frame’s group.
+			fmt.Printf("recv: %s\n", string(b))
+		}
+	}
+
+	fmt.Println("Socket?")
+	radio, err := zmq.NewSocket(zmq.RADIO)
+	if err != nil {
+		log.Println(err)
+	} else {
+		defer radio.Close()
+
+		fmt.Println("Connect?", endpoint)
+		if err := radio.Connect(endpoint); err != nil {
+			log.Println("Connect error: ", err)
+		} else {
+			log.Printf("RADIO connected to %s", endpoint)
+
+			group := "news" // <=16 chars in current spec
+			radio.Join(group)
+			snt, err := radio.SendBytes([]byte("hello via RADIO/DISH"), 0)
+			log.Printf("Sent: %d", snt)
+			if err != nil {
+				log.Println("Send error: ", err)
+			} else {
+				log.Printf("Hello sent off, let's go")
+			}
+		}
+	}
 
 	if *httpBootURLTemplate != "" {
 		httpBootTemplate, err = template.New("httpBootURL").Parse(*httpBootURLTemplate)

@@ -39,6 +39,10 @@
                   go
                   go-tools
                   nixpkgs-fmt
+                  pkg-config
+                  (zeromq.override { enableDrafts = true; })
+                  czmq
+                  libsodium
                 ];
               };
           });
@@ -63,6 +67,15 @@
               ];
             };
 
+            nativeBuildInputs = with pkgs; [
+              pkg-config
+            ];
+
+            buildInputs = with pkgs; [
+              (zeromq.override { enableDrafts = true; })
+              libsodium
+            ];
+
             PXE = pkgsX8664Linux.ipxe;
 
             postPatch = ''
@@ -86,7 +99,7 @@
             #vendorSha256 = pkgs.lib.fakeSha256;
 
             goSum = ./go.sum;
-            vendorHash = "sha256-l9EtzQUYhQkTX3+7FKdBgT389n5lh9aKPrqlBmkhK+E=";
+            vendorHash = "sha256-4XDuZhE0ZmH/qtNTmrHmhRNavwjYTBcbrmANi0sA1Ug=";
           };
         });
 
