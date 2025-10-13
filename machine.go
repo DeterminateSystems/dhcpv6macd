@@ -52,6 +52,10 @@ func (m MAC) MarshalJSON() ([]byte, error) {
 	return json.Marshal(net.HardwareAddr(m).String())
 }
 
+func (m MAC) String() string {
+	return net.HardwareAddr(m).String()
+}
+
 func NewEvent(event string) Event {
 	ev := Event{
 		Event: event,

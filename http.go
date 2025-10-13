@@ -11,6 +11,9 @@ import (
 func webserver(addr string, b *Broker, m *Machines) error {
 	// SSE endpoint
 	http.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
+		params := r.URL.Query()
+		mac := params.Get("mac")
+
 		// Mandatory SSE headers
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
@@ -27,13 +30,22 @@ func webserver(addr string, b *Broker, m *Machines) error {
 
 		// Tell client to retry in 3s if disconnected
 		fmt.Fprint(w, "retry: 3000\n\n")
-		data, err := json.Marshal(m)
-		if err != nil {
-			log.Println("JSON marshalling error: ", err)
+		if mac == "" {
+			data, err := json.Marshal(m)
+			if err != nil {
+				log.Println("JSON marshalling error: ", err)
+			} else {
+				fmt.Fprintf(w, "data: %s\n\n", string(data))
+			}
 		} else {
-			fmt.Fprintf(w, "data: %s\n\n", string(data))
-			flusher.Flush()
+			data, err := json.Marshal((*m)[MACKey(mac)])
+			if err != nil {
+				log.Println("JSON marshalling error: ", err)
+			} else {
+				fmt.Fprintf(w, "data: %s\n\n", string(data))
+			}
 		}
+
 		flusher.Flush()
 
 		// Subscribe this client
@@ -58,12 +70,14 @@ func webserver(addr string, b *Broker, m *Machines) error {
 					return
 				}
 
-				data, err := json.Marshal(msg)
-				if err != nil {
-					log.Println("JSON marshalling error: ", err)
-				} else {
-					fmt.Fprintf(w, "data: %s\n\n", string(data))
-					flusher.Flush()
+				if mac == "" || msg.Mac.String() == mac {
+					data, err := json.Marshal(msg)
+					if err != nil {
+						log.Println("JSON marshalling error: ", err)
+					} else {
+						fmt.Fprintf(w, "data: %s\n\n", string(data))
+						flusher.Flush()
+					}
 				}
 			}
 		}
