@@ -10,7 +10,6 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
 	"text/template"
 	"time"
 
@@ -469,21 +468,18 @@ func main() {
 		tftpServer.SetTimeout(5 * time.Second) // optional
 		err = tftpServer.ListenAndServe(":69") // blocks until s.Shutdown() is called
 		if err != nil {
-			log.Printf("starting TFTP server: %v", err)
-			os.Exit(1)
+			log.Fatalf("starting TFTP server: %v", err)
 		}
 	}()
 
 	server, err := server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
 	if err != nil {
-		log.Printf("starting DHCPv6 server: %s", err)
-		os.Exit(1)
+		log.Fatalf("starting DHCPv6 server: %s", err)
 	}
 
 	log.Printf("listening via UDP on %s", listenAddr)
 	if err = server.Serve(); err != nil {
-		log.Printf("DHCPv6 server exited: %v", err)
-		os.Exit(1)
+		log.Fatalf("DHCPv6 server exited: %v", err)
 	}
 
 }
