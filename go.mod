@@ -6,6 +6,7 @@ toolchain go1.23.8
 
 require (
 	github.com/insomniacslk/dhcp v0.0.0-20231206064809-8c70d406f6d2
+	github.com/looplab/fsm v1.0.3
 	github.com/mdlayher/netx v0.0.0-20230430222610-7e21880baee8
 	github.com/pin/tftp/v3 v3.1.0
 )

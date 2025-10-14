@@ -50,6 +50,34 @@ The ipxe.efi binary is only served if the client requests PXE booting.
 The daemon tells the client to fetch ipxe from `tftp://[baseAddr]/clientMacAddr/ipxe.efi`.
 When iPXE starts, it automatically starts dhcp again, and it will chain to the templatized HTTP boot url option.
 
+### HTTP SSE Events
+
+The daemon also listens on port 6315/tcp for HTTP traffic.
+Send a `GET /events` request and get a stream of DHCPv6 events.
+The `/events` endpoint also supports filtering on a MAC address, ie: `GET /events?mac=00:00:00:00:00:00`.
+
+The server immediately sends the events the server is aware of at the start:
+
+```
+data: {"01:01:01:01:01:01":{"Mac":"01:01:01:01:01:01","Events":[{"event":"init","timestamp":"2025-10-13T20:08:24.39495055Z"}, ...]}}
+```
+
+Or if you specified a MAC to filter on, it'll return the object directly (or `null` if the mac isn't present in the event table):
+
+```
+data: {"Mac":"01:01:01:01:01:01","Events":[{"event":"init","timestamp":"2025-10-13T20:01:16.698695404Z"},{"event":"point_pxe_to_ipxe_over_tftp","timestamp":"2025-10-13T20:01:16.699618993Z"},{"event":"served_ipxe_over_tftp","timestamp":"2025-10-13T20:01:22.946541642Z"},{"event":"point_ipxe_to_http_boot","timestamp":"2025-10-13T20:01:30.972207315Z"},{"event":"os_init","timestamp":"2025-10-13T20:01:50.065743799Z"}]}
+```
+
+Then, events will be served as they arrive:
+
+```
+data: {"mac":"01:01:01:01:01:01","event":{"event":"init","timestamp":"2025-10-13T20:01:16.698785748Z"}}
+
+data: {"mac":"01:01:01:01:01:01","event":{"event":"point_pxe_to_ipxe_over_tftp","timestamp":"2025-10-13T20:01:16.699634041Z"}}
+
+data: {"mac":"01:01:01:01:01:01","event":{"event":"served_ipxe_over_tftp","timestamp":"2025-10-13T20:01:22.946572526Z"}}
+```
+
 ### Root certificate tweaking
 
 The NixOS module exposes an option to set the root CA certificate for HTTPS chaining.

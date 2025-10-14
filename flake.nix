@@ -93,7 +93,7 @@
             #vendorSha256 = pkgs.lib.fakeSha256;
 
             goSum = ./go.sum;
-            vendorHash = "sha256-l9EtzQUYhQkTX3+7FKdBgT389n5lh9aKPrqlBmkhK+E=";
+            vendorHash = "sha256-wrD6Hllmq9eeKFBi4OpGsp4cjcRrRqlyaSnf6ZBNxU8=";
           };
         });
 
@@ -149,7 +149,7 @@
             lib.mkIf cfg.enable {
               networking.firewall.interfaces."${cfg.interface}" = {
                 allowedUDPPorts = [ 547 69 ];
-                allowedTCPPorts = [ 547 ];
+                allowedTCPPorts = [ 547 6315 ];
               };
 
               systemd.services.dhcpv6macd = {
