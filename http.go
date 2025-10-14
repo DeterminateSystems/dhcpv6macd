@@ -25,8 +25,6 @@ func webserver(addr string, b *Broker, m *Machines) error {
 		w.Header().Set("Content-Type", "text/event-stream")
 		w.Header().Set("Cache-Control", "no-cache")
 		w.Header().Set("Connection", "keep-alive")
-		// CORS (optional; useful when testing from other origins)
-		w.Header().Set("Access-Control-Allow-Origin", "*")
 		w.Header().Set("X-Accel-Buffering", "no")
 
 		flusher, ok := w.(http.Flusher)
