@@ -132,7 +132,7 @@ func (s *DHCPv6Handler) handleMsg(conn net.PacketConn, peer net.Addr,
 		return
 	}
 
-	log.Printf("Peer: %s\n", peer.String())
+	log.Printf("Peer: %s", peer.String())
 	log.Println(resp.Summary())
 
 	_, err = conn.WriteTo(resp.ToBytes(), peer)
@@ -418,10 +418,10 @@ func tftpReadHandler(filename string, rf io.ReaderFrom) error {
 	r := bytes.NewReader(ipxe_efi_x86_64)
 	n, err := rf.ReadFrom(r)
 	if err != nil {
-		log.Printf("Serving failure: %v\n", err)
+		log.Printf("Serving failure: %v", err)
 		return err
 	}
-	log.Printf("%d bytes sent for %s\n", n, filename)
+	log.Printf("%d bytes sent for %s", n, filename)
 	return nil
 
 }
@@ -469,7 +469,7 @@ func main() {
 		tftpServer.SetTimeout(5 * time.Second) // optional
 		err = tftpServer.ListenAndServe(":69") // blocks until s.Shutdown() is called
 		if err != nil {
-			log.Printf("starting TFTP server: %v\n", err)
+			log.Printf("starting TFTP server: %v", err)
 			os.Exit(1)
 		}
 	}()
