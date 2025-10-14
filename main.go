@@ -132,8 +132,8 @@ func (s *DHCPv6Handler) handleMsg(conn net.PacketConn, peer net.Addr,
 		return
 	}
 
-	fmt.Printf("Peer: %s\n", peer.String())
-	fmt.Println(resp.Summary())
+	log.Printf("Peer: %s\n", peer.String())
+	log.Println(resp.Summary())
 
 	_, err = conn.WriteTo(resp.ToBytes(), peer)
 	if err != nil {
@@ -414,14 +414,14 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 }
 
 func tftpReadHandler(filename string, rf io.ReaderFrom) error {
-	fmt.Println("Serving ", filename)
+	log.Println("Serving ", filename)
 	r := bytes.NewReader(ipxe_efi_x86_64)
 	n, err := rf.ReadFrom(r)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "%v\n", err)
+		log.Printf("Serving failure: %v\n", err)
 		return err
 	}
-	fmt.Printf("%d bytes sent for %s\n", n, filename)
+	log.Printf("%d bytes sent for %s\n", n, filename)
 	return nil
 
 }
@@ -469,14 +469,14 @@ func main() {
 		tftpServer.SetTimeout(5 * time.Second) // optional
 		err = tftpServer.ListenAndServe(":69") // blocks until s.Shutdown() is called
 		if err != nil {
-			fmt.Fprintf(os.Stdout, "starting TFTP server: %v\n", err)
+			log.Printf("starting TFTP server: %v\n", err)
 			os.Exit(1)
 		}
 	}()
 
 	server, err := server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
 	if err != nil {
-		fmt.Printf("starting DHCPv6 server: %s", err)
+		log.Printf("starting DHCPv6 server: %s", err)
 	}
 
 	log.Printf("listening via UDP on %s", listenAddr)
