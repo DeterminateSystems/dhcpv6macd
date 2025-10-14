@@ -4,18 +4,21 @@ import (
 	"context"
 	"encoding/json"
 	"net"
+	"sync"
 	"time"
 
 	"github.com/looplab/fsm"
 )
 
 type Machines struct {
+	mu       sync.RWMutex
 	broker   *Broker
 	machines map[MACKey]*Machine
 }
 
 func NewMachines(broker *Broker) *Machines {
 	return &Machines{
+		mu:       sync.RWMutex{},
 		broker:   broker,
 		machines: make(map[MACKey]*Machine),
 	}
@@ -24,6 +27,8 @@ func NewMachines(broker *Broker) *Machines {
 func (m *Machines) GetOrInitMachine(mac net.HardwareAddr) *Machine {
 	key := MACKey(mac.String())
 
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.machines[key] == nil {
 		m.machines[key] = NewMachine(mac, m.broker)
 	}
@@ -35,10 +40,14 @@ func (m *Machines) GetOrInitMachine(mac net.HardwareAddr) *Machine {
 func (m *Machines) GetMachine(mac net.HardwareAddr) *Machine {
 	key := MACKey(mac.String())
 
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return m.machines[key]
 }
 
 func (m *Machines) MarshalJSON() ([]byte, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
 	return json.Marshal(m.machines)
 }
 
