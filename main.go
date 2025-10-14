@@ -447,8 +447,13 @@ func main() {
 		return
 	}
 
+	parsedBaseIP := net.ParseIP(*baseAddress)
+	if parsedBaseIP == nil && parsedBaseIP.To4() != nil {
+		log.Fatalf("invalid IPv6 base-address: %s", *baseAddress)
+	}
+
 	dhcpv6Handler := DHCPv6Handler{
-		baseAddress: net.ParseIP(*baseAddress),
+		baseAddress: parsedBaseIP,
 		serverDuid: dhcpv6.DUIDLL{
 			HWType:        iana.HWTypeEthernet,
 			LinkLayerAddr: iface.HardwareAddr,
