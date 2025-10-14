@@ -56,7 +56,7 @@ jobs:
 
       - name: Check Spelling
         if: ${{ success() || failure() }}
-        run: nix develop --command codespell --ignore-words-list crate,pullrequest,pullrequests,ArchTypes --skip target .
+        run: nix develop --command codespell --ignore-words-list crate,pullrequest,pullrequests,ArchTypes --skip target,go.sum .
 
       - name: Check nixpkgs-fmt formatting
         if: ${{ success() || failure() }}
