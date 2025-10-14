@@ -466,9 +466,10 @@ func main() {
 		log.Printf("Starting the TFTP server on port 69")
 		tftpServer := tftp.NewServer(tftpReadHandler, nil)
 		tftpServer.SetTimeout(5 * time.Second) // optional
-		err = tftpServer.ListenAndServe(":69") // blocks until s.Shutdown() is called
-		if err != nil {
-			log.Fatalf("starting TFTP server: %v", err)
+
+		e := tftpServer.ListenAndServe(":69") // blocks until s.Shutdown() is called
+		if e != nil {
+			log.Fatalf("starting TFTP server: %v", e)
 		}
 	}()
 
