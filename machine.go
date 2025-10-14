@@ -52,6 +52,7 @@ func (m *Machines) MarshalJSON() ([]byte, error) {
 }
 
 type Machine struct {
+	mu     sync.Mutex
 	Mac    MAC
 	fsm    *fsm.FSM
 	Events *Ring[Event]
@@ -138,14 +139,20 @@ func NewMachine(mac net.HardwareAddr, broker *Broker) *Machine {
 }
 
 func (m *Machine) Can(event string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.fsm.Can(event)
 }
 
 func (m *Machine) Cannot(event string) bool {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	return m.fsm.Cannot(event)
 }
 
 func (m *Machine) Event(ctx context.Context, event string, args ...interface{}) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	if m.fsm.Is(event) {
 		// Emulate the FSM always allowing an event to transition into itself
 		return nil
@@ -167,6 +174,8 @@ func (m *Machine) Event(ctx context.Context, event string, args ...interface{}) 
 }
 
 func (m *Machine) Reset() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	event := NewEvent("reset")
 	m.broker.Publish(IdentifiedEvent{
 		Mac:   m.Mac,
@@ -178,6 +187,8 @@ func (m *Machine) Reset() {
 }
 
 func (m *Machine) ResetTo(event string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
 	jump := NewEvent("jump_to")
 	m.Events.Push(jump)
 
