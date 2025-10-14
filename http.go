@@ -36,21 +36,27 @@ func webserver(addr string, b *Broker, m *Machines) error {
 		}
 
 		// Tell client to retry in 3s if disconnected
-		fmt.Fprint(w, "retry: 3000\n\n")
+		if _, err = fmt.Fprint(w, "retry: 3000\n\n"); err != nil {
+			return
+		}
 
 		if macStr == "" {
 			data, err := json.Marshal(m)
 			if err != nil {
 				log.Println("JSON marshalling error: ", err)
 			} else {
-				fmt.Fprintf(w, "data: %s\n\n", string(data))
+				if _, err = fmt.Fprintf(w, "data: %s\n\n", string(data)); err != nil {
+					return
+				}
 			}
 		} else {
 			data, err := json.Marshal(machines.GetMachine(mac))
 			if err != nil {
 				log.Println("JSON marshalling error: ", err)
 			} else {
-				fmt.Fprintf(w, "data: %s\n\n", string(data))
+				if _, err := fmt.Fprintf(w, "data: %s\n\n", string(data)); err != nil {
+					return
+				}
 			}
 		}
 
@@ -71,7 +77,9 @@ func webserver(addr string, b *Broker, m *Machines) error {
 				return
 			case <-heartbeat.C:
 				// comment lines are ignored by EventSource but keep the pipe warm
-				fmt.Fprint(w, ": ping\n\n")
+				if _, err = fmt.Fprint(w, ": heartbeat\n\n"); err != nil {
+					return
+				}
 				flusher.Flush()
 			case msg, ok := <-ch:
 				if !ok {
@@ -83,7 +91,9 @@ func webserver(addr string, b *Broker, m *Machines) error {
 					if err != nil {
 						log.Println("JSON marshalling error: ", err)
 					} else {
-						fmt.Fprintf(w, "data: %s\n\n", string(data))
+						if _, err = fmt.Fprintf(w, "data: %s\n\n", string(data)); err != nil {
+							return
+						}
 						flusher.Flush()
 					}
 				}
