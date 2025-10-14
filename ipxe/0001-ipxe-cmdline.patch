@@ -1,0 +1,53 @@
+From c3dc8947910cf74b7b2d84c8b13bbab455a234c4 Mon Sep 17 00:00:00 2001
+From: Graham Christensen <graham@grahamc.com>
+Date: Tue, 14 Oct 2025 12:37:50 -0400
+Subject: [PATCH] image/efi_image.c: Do not set LoadOptions when booting EFI
+ images (#1)
+
+Setting the commandline when booting an EFI images which are
+actually UKIs causes systemd to replace the UKI's commandline
+parameters with the commandline.
+
+Ref:
+
+* https://github.com/ipxe/ipxe/discussions/1367
+* https://github.com/systemd/systemd/pull/35608#issuecomment-2554126609
+
+Co-authored-by: Cole Mickens <cole.mickens@determinate.systems>
+---
+ src/image/efi_image.c | 5 +----
+ src/usr/autoboot.c    | 5 +++++
+ 2 files changed, 6 insertions(+), 4 deletions(-)
+
+diff --git a/src/image/efi_image.c b/src/image/efi_image.c
+index e7b19c4ce4..e6e51827aa 100644
+--- a/src/image/efi_image.c
++++ b/src/image/efi_image.c
+@@ -287,10 +287,7 @@ static int efi_image_exec ( struct image *image ) {
+ 	/* Record image code type */
+ 	type = loaded->ImageCodeType;
+ 
+-	/* Set command line */
+-	loaded->LoadOptions = cmdline;
+-	loaded->LoadOptionsSize =
+-		( ( wcslen ( cmdline ) + 1 /* NUL */ ) * sizeof ( wchar_t ) );
++	/* Do not set command line */
+ 
+ 	/* Release network devices for use via SNP */
+ 	efi_snp_release();
+diff --git a/src/usr/autoboot.c b/src/usr/autoboot.c
+index 4b64ca82b5..22b5234edd 100644
+--- a/src/usr/autoboot.c
++++ b/src/usr/autoboot.c
+@@ -606,6 +606,11 @@ int ipxe ( struct net_device *netdev ) {
+ 	for_each_table_entry ( feature, FEATURES )
+ 		printf ( " %s", feature->name );
+ 	printf ( "\n" );
++	printf ( "\n" );
++	printf ( BOLD "BTW:" NORMAL " This iPXE is from dhcpv6macd. Note:\n" );
++	printf ( " * it does NOT pass `cmdline` when booting EFI images\n" );
++	printf ( "   to prevent corrupting a UKI's embedded command line\n" );
++	printf ( "\n" );
+ 
+ 	/* Boot system */
+ 	if ( ( image = first_image() ) != NULL ) {
