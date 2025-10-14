@@ -23,6 +23,10 @@
       # Nixpkgs instantiated for supported system types.
       nixpkgsFor = forAllSystems (system: import nixpkgs { inherit system; });
 
+      iPxePatches = [
+        # Note: these patches come from the integration branch of https://github.com/DeterminateSystems/ipxe
+        ./ipxe/0001-ipxe-cmdline.patch
+      ];
     in
     {
       devShells = forAllSystems
@@ -65,7 +69,7 @@
 
             PXE = pkgsX8664Linux.ipxe.overrideAttrs (oldAttrs: {
               patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
-                ++ [ ./ipxe-uki.patch ];
+                ++ iPxePatches;
             });
 
             postPatch = ''
@@ -135,7 +139,7 @@
               package = self.packages."${pkgs.stdenv.system}".default.overrideAttrs {
                 PXE = nixpkgsFor.x86_64-linux.ipxe.overrideAttrs ({ makeFlags, ... }@oldAttrs: {
                   patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
-                    ++ [ ./ipxe-uki.patch ];
+                    ++ iPxePatches;
                   makeFlags = makeFlags ++ (lib.optional (cfg.httpBootRootCertificate != null)
                     ''TRUST=${cfg.httpBootRootCertificate}'')
                   ;
