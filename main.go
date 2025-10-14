@@ -477,9 +477,13 @@ func main() {
 	server, err := server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
 	if err != nil {
 		log.Printf("starting DHCPv6 server: %s", err)
+		os.Exit(1)
 	}
 
 	log.Printf("listening via UDP on %s", listenAddr)
+	if err = server.Serve(); err != nil {
+		log.Printf("DHCPv6 server exited: %v", err)
+		os.Exit(1)
+	}
 
-	server.Serve()
 }
