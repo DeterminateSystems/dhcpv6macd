@@ -9,16 +9,37 @@ import (
 	"github.com/looplab/fsm"
 )
 
-type Machines map[MACKey]*Machine
+type Machines struct {
+	broker   *Broker
+	machines map[MACKey]*Machine
+}
 
-func (m Machines) GetMachine(mac net.HardwareAddr) *Machine {
+func NewMachines(broker *Broker) *Machines {
+	return &Machines{
+		broker:   broker,
+		machines: make(map[MACKey]*Machine),
+	}
+}
+
+func (m *Machines) GetOrInitMachine(mac net.HardwareAddr) *Machine {
 	key := MACKey(mac.String())
 
-	if m[key] == nil {
-		m[key] = NewMachine(mac, broker)
+	if m.machines[key] == nil {
+		m.machines[key] = NewMachine(mac, m.broker)
 	}
 
-	return m[key]
+	return m.machines[key]
+}
+
+// Lookup the machine stats
+func (m *Machines) GetMachine(mac net.HardwareAddr) *Machine {
+	key := MACKey(mac.String())
+
+	return m.machines[key]
+}
+
+func (m *Machines) MarshalJSON() ([]byte, error) {
+	return json.Marshal(m.machines)
 }
 
 type Machine struct {

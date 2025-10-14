@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net"
 	"testing"
@@ -186,4 +187,25 @@ func TestTransitionsJumpTo(t *testing.T) {
 	}
 
 	expectNoEvent(t, subscriber)
+}
+
+func TestEncodeMachines(t *testing.T) {
+	makeTimeBogus()
+
+	mac := net.HardwareAddr{0x04, 0x42, 0x1a, 0x03, 0x9b, 0x20}
+	broker := NewBroker()
+	machines := NewMachines(broker)
+
+	machines.GetOrInitMachine(mac).Event(context.Background(), "http_boot")
+
+	jsonbytes, err := json.Marshal(machines)
+	if err != nil {
+		t.Fatalf("Marshal failure: %v", err)
+	}
+	json := string(jsonbytes)
+
+	want := "{\"04:42:1a:03:9b:20\":{\"Mac\":\"04:42:1a:03:9b:20\",\"Events\":[{\"event\":\"init\",\"timestamp\":\"bogustime\"},{\"event\":\"http_boot\",\"timestamp\":\"bogustime\"}]}}"
+	if json != want {
+		t.Fatalf("Wanted %s,\ngot: %s", want, json)
+	}
 }

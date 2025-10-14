@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"time"
 )
@@ -12,7 +13,13 @@ func webserver(addr string, b *Broker, m *Machines) error {
 	// SSE endpoint
 	http.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
 		params := r.URL.Query()
-		mac := params.Get("mac")
+		macStr := params.Get("mac")
+
+		mac, err := net.ParseMAC(macStr)
+		if macStr != "" && err != nil {
+			http.Error(w, fmt.Sprintf("MAC error: %v", err), http.StatusBadRequest)
+			return
+		}
 
 		// Mandatory SSE headers
 		w.Header().Set("Content-Type", "text/event-stream")
@@ -30,7 +37,8 @@ func webserver(addr string, b *Broker, m *Machines) error {
 
 		// Tell client to retry in 3s if disconnected
 		fmt.Fprint(w, "retry: 3000\n\n")
-		if mac == "" {
+
+		if macStr == "" {
 			data, err := json.Marshal(m)
 			if err != nil {
 				log.Println("JSON marshalling error: ", err)
@@ -38,7 +46,7 @@ func webserver(addr string, b *Broker, m *Machines) error {
 				fmt.Fprintf(w, "data: %s\n\n", string(data))
 			}
 		} else {
-			data, err := json.Marshal((*m)[MACKey(mac)])
+			data, err := json.Marshal(machines.GetMachine(mac))
 			if err != nil {
 				log.Println("JSON marshalling error: ", err)
 			} else {
@@ -70,7 +78,7 @@ func webserver(addr string, b *Broker, m *Machines) error {
 					return
 				}
 
-				if mac == "" || msg.Mac.String() == mac {
+				if macStr == "" || msg.Mac.String() == mac.String() {
 					data, err := json.Marshal(msg)
 					if err != nil {
 						log.Println("JSON marshalling error: ", err)

@@ -42,8 +42,7 @@ var (
 
 var httpBootTemplate *template.Template
 
-var machines Machines
-var broker *Broker
+var machines *Machines
 
 // Handler implements a server6.Handler.
 func (s *DHCPv6Handler) Handler(conn net.PacketConn, peer net.Addr, m dhcpv6.DHCPv6) {
@@ -324,7 +323,7 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 		}
 	}
 
-	machine := machines.GetMachine(mac)
+	machine := machines.GetOrInitMachine(mac)
 
 	prefix := make([]byte, 10)
 	copy(prefix, s.baseAddress[:10])
@@ -461,7 +460,7 @@ func tftpReadHandler(filename string, rf io.ReaderFrom) error {
 
 	log.Println("Serving ", filename)
 
-	machine := machines.GetMachine(mac)
+	machine := machines.GetOrInitMachine(mac)
 	machine.Event(context.Background(), "served_ipxe_over_tftp")
 
 	r := bytes.NewReader(ipxe_efi_x86_64)
@@ -517,8 +516,8 @@ func main() {
 		Port: dhcpv6.DefaultServerPort,
 	}
 
-	machines = make(Machines)
-	broker = NewBroker()
+	broker := NewBroker()
+	machines = NewMachines(broker)
 
 	go func() {
 		log.Printf("Starting the TFTP server on port 69")
@@ -533,7 +532,7 @@ func main() {
 
 	go func() {
 		log.Printf("Starting the webserver server on port 6315")
-		err := webserver(":6315", broker, &machines)
+		err := webserver(":6315", broker, machines)
 		if err != nil {
 			log.Printf("starting webserver: %v\n", err)
 			os.Exit(1)
