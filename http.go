@@ -9,7 +9,18 @@ import (
 	"time"
 )
 
+var fs http.FileServer
+
+func init() {
+	const dir = "/netboot"
+	fs := http.FileServer(http.Dir(dir))
+}
+
 func webserver(addr string, b *Broker, m *Machines) error {
+	http.HandleFunc("/mac/{}", func(w http.ResponseWriter, r *http.Request) {
+		fs.ServeHTTP(w, r)
+	})
+
 	// SSE endpoint
 	http.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
 		params := r.URL.Query()
