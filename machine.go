@@ -121,7 +121,7 @@ func NewMachine(mac net.HardwareAddr, broker *Broker) *Machine {
 
 			{Name: "http_fetch_uki", Src: []string{"http_boot", "point_ipxe_to_http_boot"}, Dst: "http_fetch_uki"},
 
-			{Name: "os_init", Src: []string{"http_boot", "point_ipxe_to_http_boot"}, Dst: "os_init"},
+			{Name: "os_init", Src: []string{"http_fetch_uki"}, Dst: "os_init"},
 		},
 		fsm.Callbacks{
 			"enter_state": func(_ context.Context, e *fsm.Event) {
