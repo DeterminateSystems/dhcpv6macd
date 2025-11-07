@@ -39,6 +39,8 @@ var (
 	baseAddress         = flag.String("base-address", "fec0::", "IPv6 base address to distribute MAC-based IPs through, we assume its a /72")
 	networkInterface    = flag.String("interface", "eth0", "Interface to listen on")
 	httpBootURLTemplate = flag.String("http-boot-url-template", "", "URL template for HTTP boot requests, like http://netboot.target/?mac={{.MAC}}")
+	tlsCertFile         = flag.String("tls-cert-file", "", "Path to TLS Certificate File")
+	tlsKeyFile          = flag.String("tls-key-file", "", "Path to TLS Key File")
 )
 
 var httpBootTemplate *template.Template
@@ -480,6 +482,13 @@ func main() {
 
 	var err error
 
+	useTls := false
+	if *tlsCertFile == "" || *tlsKeyFile == "" {
+		log.Printf("TLS will not be enabled!: --tls-cert-file and --tls-key-file must be provided")
+	} else {
+		useTls = true
+	}
+
 	if *httpBootURLTemplate != "" {
 		httpBootTemplate, err = template.New("httpBootURL").Parse(*httpBootURLTemplate)
 		if err != nil {
@@ -534,7 +543,7 @@ func main() {
 	go func() {
 		addr := ":6315"
 		log.Printf("Starting the webserver server on port %s", addr)
-		server, err := webserver(addr, broker, machines)
+		mux, err := webserver(addr, broker, machines)
 
 		if err != nil {
 			log.Printf("starting webserver: %v\n", err)
@@ -542,7 +551,11 @@ func main() {
 		}
 
 		log.Printf("SSE server listening on %s", addr)
-		http.ListenAndServe(addr, server)
+		if useTls {
+			http.ListenAndServeTLS(addr, *tlsCertFile, *tlsKeyFile, mux)
+		} else {
+			http.ListenAndServe(addr, mux)
+		}
 	}()
 
 	server, err := server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
