@@ -6,18 +6,23 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"time"
 )
 
-func webserver(addr string, b *Broker, m *Machines) (*http.ServeMux, error) {
+func webserver(addr string, netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error) {
 	server := http.NewServeMux()
 
-	const dir = "/netboot"
-	fs := http.FileServer(http.Dir(dir))
-
-	server.HandleFunc("/mac/{}", func(w http.ResponseWriter, r *http.Request) {
-		fs.ServeHTTP(w, r)
-	})
+	if netbootDir == "" {
+		fmt.Printf("netboot directory was not specified, will not serve it: %s", netbootDir)
+	} else if _, err := os.Stat(netbootDir); os.IsNotExist(err) {
+		fmt.Printf("netboot directory does not exist, will not serve it: %s", netbootDir)
+	} else {
+		fs := http.FileServer(http.Dir(netbootDir))
+		server.HandleFunc("/mac/{}", func(w http.ResponseWriter, r *http.Request) {
+			http.StripPrefix("/mac/", fs).ServeHTTP(w, r)
+		})
+	}
 
 	// SSE endpoint
 	server.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {

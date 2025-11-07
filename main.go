@@ -42,6 +42,7 @@ var (
 	httpBootURLTemplate = flag.String("http-boot-url-template", "", "URL template for HTTP boot requests, like http://netboot.target/?mac={{.MAC}}")
 	tlsCertFile         = flag.String("tls-cert-file", "", "Path to TLS Certificate File")
 	tlsKeyFile          = flag.String("tls-key-file", "", "Path to TLS Key File")
+	netbootDir          = flag.String("netboot-dir", "/netboot/mac", "Path to MACs to serve for netboot")
 )
 
 var httpBootTemplate *template.Template
@@ -544,7 +545,7 @@ func main() {
 	go func() {
 		addr := ":6315"
 		log.Printf("Starting the webserver server on port %s", addr)
-		mux, err := webserver(addr, broker, machines)
+		mux, err := webserver(addr, *netbootDir, broker, machines)
 
 		if err != nil {
 			log.Printf("starting webserver: %v\n", err)
