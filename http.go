@@ -45,9 +45,9 @@ func webserver(netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error
 	server := http.NewServeMux()
 
 	if netbootDir == "" {
-		fmt.Printf("netboot directory was not specified, will not serve it: %s", netbootDir)
+		log.Printf("netboot directory was not specified, will not serve it: %s", netbootDir)
 	} else if _, err := os.Stat(netbootDir); os.IsNotExist(err) {
-		fmt.Printf("netboot directory does not exist, will not serve it: %s", netbootDir)
+		log.Printf("netboot directory does not exist, will not serve it: %s", netbootDir)
 	} else {
 		fs := http.FileServer(neuteredFileSystem{http.Dir(netbootDir)})
 		server.HandleFunc("/mac/{mac_addr}/boot.efi", func(w http.ResponseWriter, r *http.Request) {
