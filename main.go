@@ -504,7 +504,7 @@ func main() {
 	}
 
 	parsedBaseIP := net.ParseIP(*baseAddress)
-	if parsedBaseIP == nil && parsedBaseIP.To4() != nil {
+	if parsedBaseIP == nil || parsedBaseIP.To4() != nil {
 		log.Fatalf("invalid IPv6 base-address: %s", *baseAddress)
 	}
 
