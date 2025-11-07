@@ -49,8 +49,22 @@ func webserver(addr string, netbootDir string, b *Broker, m *Machines) (*http.Se
 	} else if _, err := os.Stat(netbootDir); os.IsNotExist(err) {
 		fmt.Printf("netboot directory does not exist, will not serve it: %s", netbootDir)
 	} else {
-		server.HandleFunc("/mac/{}", func(w http.ResponseWriter, r *http.Request) {
-			fs := http.FileServer(neuteredFileSystem{http.Dir(netbootDir)})
+		fs := http.FileServer(neuteredFileSystem{http.Dir(netbootDir)})
+		server.HandleFunc("/mac/{mac_addr}", func(w http.ResponseWriter, r *http.Request) {
+			// Extract MAC address from path
+			macStr := r.PathValue("mac_addr")
+			mac, err := net.ParseMAC(macStr)
+			if err != nil {
+				log.Printf("Got request with something that didn't look like a MAC address. Permitting anyway.")
+			} else {
+				machine := m.GetOrInitMachine(mac)
+
+				// Trigger state transition to http_fetch_uki
+				if err := machine.Event(r.Context(), "http_fetch_uki"); err != nil {
+					log.Printf("Failed to transition to http_fetch_uki for %s: %v", macStr, err)
+				}
+			}
+
 			http.StripPrefix("/mac/", fs).ServeHTTP(w, r)
 		})
 	}

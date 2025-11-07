@@ -119,6 +119,8 @@ func NewMachine(mac net.HardwareAddr, broker *Broker) *Machine {
 			{Name: "served_ipxe_over_tftp", Src: []string{"point_pxe_to_ipxe_over_tftp"}, Dst: "served_ipxe_over_tftp"},
 			{Name: "point_ipxe_to_http_boot", Src: []string{"served_ipxe_over_tftp"}, Dst: "point_ipxe_to_http_boot"},
 
+			{Name: "http_fetch_uki", Src: []string{"http_boot", "point_ipxe_to_http_boot"}, Dst: "http_fetch_uki"},
+
 			{Name: "os_init", Src: []string{"http_boot", "point_ipxe_to_http_boot"}, Dst: "os_init"},
 		},
 		fsm.Callbacks{
