@@ -133,7 +133,6 @@
               };
               netbootDirectory = lib.mkOption {
                 type = lib.types.nullOr lib.types.path;
-                default = "/netboot/mac";
                 description = lib.mdDoc ''
                   `/netboot/mac`
                 '';
@@ -213,6 +212,7 @@
               enable = true;
               interface = "eth1";
               baseAddress = "fd19:287e:c5a0:4931::";
+              netbootDirectory = "/netboot/mac";
             };
 
             networking.useNetworkd = true;
