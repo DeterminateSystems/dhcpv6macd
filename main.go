@@ -544,6 +544,9 @@ func main() {
 	httpAddr := ":80"
 	httpsAddr := ":443"
 	mux, err := webserver(*netbootDir, broker, machines)
+	if err != nil {
+		log.Fatalf("Failed to initialize webserver: %v", err)
+	}
 
 	// run HTTP
 	go func() {
