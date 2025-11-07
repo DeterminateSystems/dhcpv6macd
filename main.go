@@ -22,6 +22,7 @@ import (
 	"github.com/insomniacslk/dhcp/dhcpv6/server6"
 	"github.com/insomniacslk/dhcp/iana"
 
+	"github.com/matthewpi/certwatcher"
 	"github.com/mdlayher/netx/eui64"
 	"github.com/pin/tftp/v3"
 )
@@ -552,7 +553,25 @@ func main() {
 
 		log.Printf("SSE server listening on %s", addr)
 		if useTls {
-			http.ListenAndServeTLS(addr, *tlsCertFile, *tlsKeyFile, mux)
+			cwTlsConfig := certwatcher.TLSConfig{
+				CertPath:   *tlsCertFile,
+				KeyPath:    *tlsKeyFile,
+				DontStaple: false,
+			}
+			tlsConfig, err := cwTlsConfig.GetTLSConfig(context.Background())
+			if err != nil {
+				log.Fatalf("Server failed: %v", err)
+			}
+			server := &http.Server{
+				Addr:      addr,
+				Handler:   mux,
+				TLSConfig: tlsConfig,
+			}
+
+			err = server.ListenAndServeTLS("", "")
+			if err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Server failed: %v", err)
+			}
 		} else {
 			http.ListenAndServe(addr, mux)
 		}
