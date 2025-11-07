@@ -41,7 +41,7 @@ func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
 	return f, nil
 }
 
-func webserver(addr string, netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error) {
+func webserver(netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error) {
 	server := http.NewServeMux()
 
 	if netbootDir == "" {

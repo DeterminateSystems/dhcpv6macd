@@ -12,7 +12,6 @@ import (
 	"log"
 	"net"
 	"net/http"
-	"os"
 	"slices"
 	"strings"
 	"text/template"
@@ -542,18 +541,28 @@ func main() {
 		}
 	}()
 
-	go func() {
-		addr := ":6315"
-		log.Printf("Starting the webserver server on port %s", addr)
-		mux, err := webserver(addr, *netbootDir, broker, machines)
+	httpAddr := ":80"
+	httpsAddr := ":443"
+	mux, err := webserver(*netbootDir, broker, machines)
 
-		if err != nil {
-			log.Printf("starting webserver: %v\n", err)
-			os.Exit(1)
+	// run HTTP
+	go func() {
+		log.Printf("HTTP server listening on %s", httpAddr)
+		server := &http.Server{
+			Addr:    httpAddr,
+			Handler: mux,
 		}
 
-		log.Printf("HTTP server listening on %s (TLS: %v)", addr, useTls)
-		if useTls {
+		err = server.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
+		}
+	}()
+
+	// run HTTPS
+	if useTls {
+		go func() {
+			log.Printf("HTTPs server listening on %s", httpsAddr)
 			cwTlsConfig := certwatcher.TLSConfig{
 				CertPath:   *tlsCertFile,
 				KeyPath:    *tlsKeyFile,
@@ -564,7 +573,7 @@ func main() {
 				log.Fatalf("Server failed: %v", err)
 			}
 			server := &http.Server{
-				Addr:      addr,
+				Addr:      httpsAddr,
 				Handler:   mux,
 				TLSConfig: tlsConfig,
 			}
@@ -573,13 +582,8 @@ func main() {
 			if err != nil && err != http.ErrServerClosed {
 				log.Fatalf("Server failed: %v", err)
 			}
-		} else {
-			err = http.ListenAndServe(addr, mux)
-			if err != nil && err != http.ErrServerClosed {
-				log.Fatalf("Server failed: %v", err)
-			}
-		}
-	}()
+		}()
+	}
 
 	server, err := server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
 	if err != nil {
