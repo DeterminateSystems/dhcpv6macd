@@ -131,6 +131,27 @@
                   Required when httpBootUrlTemplate uses HTTPS and the server certificate is not signed by a well-known CA.
                 '';
               };
+              netbootDirectory = lib.mkOption {
+                type = lib.types.nullOr lib.types.path;
+                default = "/netboot/mac";
+                description = lib.mdDoc ''
+                  `/netboot/mac`
+                '';
+              };
+              tlsCertFile = lib.mkOption {
+                type = lib.types.nullOr lib.types.path;
+                default = null;
+                description = lib.mdDoc ''
+                  Location of netboot TLS cert PEM.
+                '';
+              };
+              tlsKeyFile = lib.mkOption {
+                type = lib.types.nullOr lib.types.path;
+                default = null;
+                description = lib.mdDoc ''
+                  Location of netboot TLS key PEM.
+                '';
+              };
             };
           };
           config =
@@ -166,6 +187,12 @@
                     cfg.baseAddress
                     "-http-boot-url-template"
                     cfg.httpBootUrlTemplate
+                    "-tls-cert-file"
+                    cfg.tlsCertFile
+                    "-tls-key-file"
+                    cfg.tlsKeyFile
+                    "-netboot-dir"
+                    cfg.netbootDirectory
                   ]);
                 };
               };
