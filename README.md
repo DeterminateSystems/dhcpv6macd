@@ -21,8 +21,17 @@ Notes:
 
 ```sh
 go build .
-sudo ./dhcpv6macd -interface enp2s0 -base-address 2001:db8:0123:4567:: -http-boot-url-template 'http://netboot.target/?mac={{.MAC}}'
+sudo ./dhcpv6macd \
+  -interface enp2s0 \
+  -base-address 2001:db8:0123:4567:: \
+  -http-boot-url-template 'http://netboot.target/?mac={{.MAC}}' \
+  -tls-cert-file /tmp/netboot-server.crt.pem \
+  -tls-key-file /tmp/netboot-server.key.pem \
+  -netboot-dir /netboot/macs
 ```
+
+The `-tls-cert-file`, `-tls-key-file`, and `-netboot-dir` are optional and relate to
+serving a MAC-oriented directory structure over HTTP(s).
 
 ...where the template can use these parameters:
 

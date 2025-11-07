@@ -6,12 +6,73 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"path/filepath"
 	"time"
 )
 
-func webserver(addr string, b *Broker, m *Machines) error {
+type neuteredFileSystem struct {
+	fs http.FileSystem
+}
+
+func (nfs neuteredFileSystem) Open(path string) (http.File, error) {
+	f, err := nfs.fs.Open(path)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := f.Stat()
+	if err != nil {
+		return nil, err
+	}
+
+	if s.IsDir() {
+		index := filepath.Join(path, "index.html")
+		if _, err := nfs.fs.Open(index); err != nil {
+			closeErr := f.Close()
+			if closeErr != nil {
+				return nil, closeErr
+			}
+
+			return nil, err
+		}
+	}
+
+	return f, nil
+}
+
+func webserver(netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error) {
+	server := http.NewServeMux()
+
+	if netbootDir == "" {
+		log.Printf("netboot directory was not specified, will not serve it: %s", netbootDir)
+	} else if _, err := os.Stat(netbootDir); os.IsNotExist(err) {
+		log.Printf("netboot directory does not exist, will not serve it: %s", netbootDir)
+	} else {
+		fs := http.FileServer(neuteredFileSystem{http.Dir(netbootDir)})
+		server.HandleFunc("/mac/{mac_addr}/boot.efi", func(w http.ResponseWriter, r *http.Request) {
+			// Extract MAC address from path
+			macStr := r.PathValue("mac_addr")
+			mac, err := net.ParseMAC(macStr)
+			if err != nil {
+				log.Printf("Got request with something that didn't look like a MAC address. Returning 404.")
+				http.NotFound(w, r)
+				return
+			} else {
+				machine := m.GetOrInitMachine(mac)
+
+				// Trigger state transition to http_fetch_uki
+				if err := machine.Event(r.Context(), "http_fetch_uki"); err != nil {
+					log.Printf("Failed to transition to http_fetch_uki for %s: %v", macStr, err)
+				}
+			}
+
+			http.StripPrefix("/mac/", fs).ServeHTTP(w, r)
+		})
+	}
+
 	// SSE endpoint
-	http.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
+	server.HandleFunc("/events", func(w http.ResponseWriter, r *http.Request) {
 		params := r.URL.Query()
 		macStr := params.Get("mac")
 
@@ -99,6 +160,5 @@ func webserver(addr string, b *Broker, m *Machines) error {
 		}
 	})
 
-	log.Printf("SSE server listening on %s", addr)
-	return http.ListenAndServe(addr, nil)
+	return server, nil
 }

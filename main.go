@@ -11,7 +11,7 @@ import (
 	"io"
 	"log"
 	"net"
-	"os"
+	"net/http"
 	"slices"
 	"strings"
 	"text/template"
@@ -21,6 +21,7 @@ import (
 	"github.com/insomniacslk/dhcp/dhcpv6/server6"
 	"github.com/insomniacslk/dhcp/iana"
 
+	"github.com/matthewpi/certwatcher"
 	"github.com/mdlayher/netx/eui64"
 	"github.com/pin/tftp/v3"
 )
@@ -38,6 +39,9 @@ var (
 	baseAddress         = flag.String("base-address", "fec0::", "IPv6 base address to distribute MAC-based IPs through, we assume its a /72")
 	networkInterface    = flag.String("interface", "eth0", "Interface to listen on")
 	httpBootURLTemplate = flag.String("http-boot-url-template", "", "URL template for HTTP boot requests, like http://netboot.target/?mac={{.MAC}}")
+	tlsCertFile         = flag.String("tls-cert-file", "", "Path to TLS Certificate File")
+	tlsKeyFile          = flag.String("tls-key-file", "", "Path to TLS Key File")
+	netbootDir          = flag.String("netboot-dir", "", "Path to MACs to serve for netboot")
 )
 
 var httpBootTemplate *template.Template
@@ -479,6 +483,13 @@ func main() {
 
 	var err error
 
+	useTls := false
+	if *tlsCertFile == "" || *tlsKeyFile == "" {
+		log.Printf("TLS will not be enabled!: -tls-cert-file and -tls-key-file must be provided")
+	} else {
+		useTls = true
+	}
+
 	if *httpBootURLTemplate != "" {
 		httpBootTemplate, err = template.New("httpBootURL").Parse(*httpBootURLTemplate)
 		if err != nil {
@@ -493,7 +504,7 @@ func main() {
 	}
 
 	parsedBaseIP := net.ParseIP(*baseAddress)
-	if parsedBaseIP == nil && parsedBaseIP.To4() != nil {
+	if parsedBaseIP == nil || parsedBaseIP.To4() != nil {
 		log.Fatalf("invalid IPv6 base-address: %s", *baseAddress)
 	}
 
@@ -530,14 +541,52 @@ func main() {
 		}
 	}()
 
+	httpAddr := ":80"
+	httpsAddr := ":443"
+	mux, err := webserver(*netbootDir, broker, machines)
+	if err != nil {
+		log.Fatalf("Failed to initialize webserver: %v", err)
+	}
+
+	// run HTTP
 	go func() {
-		log.Printf("Starting the webserver server on port 6315")
-		err := webserver(":6315", broker, machines)
-		if err != nil {
-			log.Printf("starting webserver: %v\n", err)
-			os.Exit(1)
+		log.Printf("HTTP server listening on %s", httpAddr)
+		server := &http.Server{
+			Addr:    httpAddr,
+			Handler: mux,
+		}
+
+		err = server.ListenAndServe()
+		if err != nil && err != http.ErrServerClosed {
+			log.Fatalf("Server failed: %v", err)
 		}
 	}()
+
+	// run HTTPS
+	if useTls {
+		go func() {
+			log.Printf("HTTPs server listening on %s", httpsAddr)
+			cwTlsConfig := certwatcher.TLSConfig{
+				CertPath:   *tlsCertFile,
+				KeyPath:    *tlsKeyFile,
+				DontStaple: false,
+			}
+			tlsConfig, err := cwTlsConfig.GetTLSConfig(context.Background())
+			if err != nil {
+				log.Fatalf("Server failed: %v", err)
+			}
+			server := &http.Server{
+				Addr:      httpsAddr,
+				Handler:   mux,
+				TLSConfig: tlsConfig,
+			}
+
+			err = server.ListenAndServeTLS("", "")
+			if err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Server failed: %v", err)
+			}
+		}()
+	}
 
 	server, err := server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
 	if err != nil {

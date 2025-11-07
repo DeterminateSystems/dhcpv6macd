@@ -93,7 +93,7 @@
             #vendorSha256 = pkgs.lib.fakeSha256;
 
             goSum = ./go.sum;
-            vendorHash = "sha256-wrD6Hllmq9eeKFBi4OpGsp4cjcRrRqlyaSnf6ZBNxU8=";
+            vendorHash = "sha256-2CV+mHkHBGwECzMTIZWLYKFshzQHPqcy8K9zZ8QDQLk=";
           };
         });
 
@@ -131,6 +131,26 @@
                   Required when httpBootUrlTemplate uses HTTPS and the server certificate is not signed by a well-known CA.
                 '';
               };
+              netbootDirectory = lib.mkOption {
+                type = lib.types.nullOr lib.types.path;
+                description = lib.mdDoc ''
+                  `/netboot/mac`
+                '';
+              };
+              tlsCertFile = lib.mkOption {
+                type = lib.types.nullOr lib.types.path;
+                default = null;
+                description = lib.mdDoc ''
+                  Location of netboot TLS cert PEM.
+                '';
+              };
+              tlsKeyFile = lib.mkOption {
+                type = lib.types.nullOr lib.types.path;
+                default = null;
+                description = lib.mdDoc ''
+                  Location of netboot TLS key PEM.
+                '';
+              };
             };
           };
           config =
@@ -166,6 +186,12 @@
                     cfg.baseAddress
                     "-http-boot-url-template"
                     cfg.httpBootUrlTemplate
+                    "-tls-cert-file"
+                    cfg.tlsCertFile
+                    "-tls-key-file"
+                    cfg.tlsKeyFile
+                    "-netboot-dir"
+                    cfg.netbootDirectory
                   ]);
                 };
               };
@@ -186,6 +212,7 @@
               enable = true;
               interface = "eth1";
               baseAddress = "fd19:287e:c5a0:4931::";
+              netbootDirectory = "/netboot/mac";
             };
 
             networking.useNetworkd = true;
