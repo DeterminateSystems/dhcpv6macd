@@ -551,7 +551,7 @@ func main() {
 			os.Exit(1)
 		}
 
-		log.Printf("SSE server listening on %s", addr)
+		log.Printf("HTTP server listening on %s (TLS: %v)", addr, useTls)
 		if useTls {
 			cwTlsConfig := certwatcher.TLSConfig{
 				CertPath:   *tlsCertFile,
@@ -573,7 +573,10 @@ func main() {
 				log.Fatalf("Server failed: %v", err)
 			}
 		} else {
-			http.ListenAndServe(addr, mux)
+			err = http.ListenAndServe(addr, mux)
+			if err != nil && err != http.ErrServerClosed {
+				log.Fatalf("Server failed: %v", err)
+			}
 		}
 	}()
 
