@@ -50,7 +50,7 @@ func webserver(addr string, netbootDir string, b *Broker, m *Machines) (*http.Se
 		fmt.Printf("netboot directory does not exist, will not serve it: %s", netbootDir)
 	} else {
 		fs := http.FileServer(neuteredFileSystem{http.Dir(netbootDir)})
-		server.HandleFunc("/mac/{mac_addr}", func(w http.ResponseWriter, r *http.Request) {
+		server.HandleFunc("/mac/{mac_addr}/boot.efi", func(w http.ResponseWriter, r *http.Request) {
 			// Extract MAC address from path
 			macStr := r.PathValue("mac_addr")
 			mac, err := net.ParseMAC(macStr)
