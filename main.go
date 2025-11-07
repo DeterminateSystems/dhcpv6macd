@@ -11,6 +11,7 @@ import (
 	"io"
 	"log"
 	"net"
+	"net/http"
 	"os"
 	"slices"
 	"strings"
@@ -531,12 +532,17 @@ func main() {
 	}()
 
 	go func() {
-		log.Printf("Starting the webserver server on port 6315")
-		err := webserver(":6315", broker, machines)
+		addr := ":6315"
+		log.Printf("Starting the webserver server on port %s", addr)
+		server, err := webserver(addr, broker, machines)
+
 		if err != nil {
 			log.Printf("starting webserver: %v\n", err)
 			os.Exit(1)
 		}
+
+		log.Printf("SSE server listening on %s", addr)
+		http.ListenAndServe(addr, server)
 	}()
 
 	server, err := server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
