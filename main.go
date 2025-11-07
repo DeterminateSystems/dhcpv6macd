@@ -41,7 +41,7 @@ var (
 	httpBootURLTemplate = flag.String("http-boot-url-template", "", "URL template for HTTP boot requests, like http://netboot.target/?mac={{.MAC}}")
 	tlsCertFile         = flag.String("tls-cert-file", "", "Path to TLS Certificate File")
 	tlsKeyFile          = flag.String("tls-key-file", "", "Path to TLS Key File")
-	netbootDir          = flag.String("netboot-dir", "/netboot/mac", "Path to MACs to serve for netboot")
+	netbootDir          = flag.String("netboot-dir", "", "Path to MACs to serve for netboot")
 )
 
 var httpBootTemplate *template.Template
@@ -485,7 +485,7 @@ func main() {
 
 	useTls := false
 	if *tlsCertFile == "" || *tlsKeyFile == "" {
-		log.Printf("TLS will not be enabled!: --tls-cert-file and --tls-key-file must be provided")
+		log.Printf("TLS will not be enabled!: -tls-cert-file and -tls-key-file must be provided")
 	} else {
 		useTls = true
 	}
