@@ -55,7 +55,9 @@ func webserver(netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error
 			macStr := r.PathValue("mac_addr")
 			mac, err := net.ParseMAC(macStr)
 			if err != nil {
-				log.Printf("Got request with something that didn't look like a MAC address. Permitting anyway.")
+				log.Printf("Got request with something that didn't look like a MAC address. Returning 404.")
+				http.NotFound(w, r)
+				return
 			} else {
 				machine := m.GetOrInitMachine(mac)
 
