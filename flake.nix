@@ -97,6 +97,8 @@
           };
         });
 
+      minnowsFlows.default = import ./flow.nix inputs.self.packages.x86_64-linux.default;
+
       nixosModules = {
         dhcpv6macd = { pkgs, config, lib, ... }: {
           options = {
