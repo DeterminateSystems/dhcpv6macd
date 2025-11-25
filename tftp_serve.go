@@ -19,6 +19,7 @@ func tftpReadHandler(filename string, rf io.ReaderFrom) error {
 	underlying_reader := bytes.NewReader(ipxe_efi_x86_64)
 
 	tftpevent := TransferEvent{
+		Protocol:   "tftp",
 		Filename:   filename,
 		State:      "init",
 		TotalBytes: underlying_reader.Size(),

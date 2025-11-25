@@ -106,6 +106,12 @@ func webserver(netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error
 				TotalBytes: stat.Size(),
 			}
 
+			if r.TLS == nil {
+				event.Protocol = "http"
+			} else {
+				event.Protocol = "https"
+			}
+
 			// Trigger state transition to http_fetch_uki
 			if err := machine.Event(r.Context(), "http_fetch_uki", event); err != nil {
 				log.Printf("Failed to transition to http_fetch_uki for %s: %v", macStr, err)

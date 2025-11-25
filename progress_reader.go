@@ -3,6 +3,7 @@ package main
 import "io"
 
 type TransferEvent struct {
+	Protocol   string `json:"protocol"`
 	Filename   string `json:"file_name"`
 	State      string `json:"state"`
 	SentBytes  int64  `json:"sent_bytes"`
@@ -44,6 +45,7 @@ func (p *progressReader) Read(b []byte) (int, error) {
 	// If we've hit EOF, emit one final progress event
 	if err == io.EOF && !p.firedFinal {
 		p.firedFinal = true
+
 		if err := p.onMark(p.total); err != nil {
 			return n, err
 		}
