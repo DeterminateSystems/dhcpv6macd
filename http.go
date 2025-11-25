@@ -212,7 +212,7 @@ func webserver(netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error
 					return
 				}
 
-				if macStr == "" || msg.Mac.String() == mac.String() {
+				if macStr == "" || msg.Mac.String() == "" || msg.Mac.String() == mac.String() {
 					data, err := json.Marshal(msg)
 					if err != nil {
 						log.Println("JSON marshalling error: ", err)
