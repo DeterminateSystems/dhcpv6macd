@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -70,6 +71,8 @@ type IdentifiedEvent struct {
 type Event struct {
 	Event     string `json:"event"`
 	Timestamp string `json:"timestamp"`
+	Repeated  bool   `json:"repeat_event"`
+	Arguments []interface{}
 }
 
 var bogusTimestamp *string
@@ -87,9 +90,11 @@ func (m MAC) String() string {
 	return net.HardwareAddr(m).String()
 }
 
-func NewEvent(event string) Event {
+func NewEvent(event string, repeat bool, args []interface{}) Event {
 	ev := Event{
-		Event: event,
+		Event:     event,
+		Repeated:  repeat,
+		Arguments: args,
 	}
 
 	if bogusTimestamp == nil {
@@ -125,12 +130,12 @@ func NewMachine(mac net.HardwareAddr, broker *Broker) *Machine {
 		},
 		fsm.Callbacks{
 			"enter_state": func(_ context.Context, e *fsm.Event) {
-				machine.Events.Push(NewEvent(e.Dst))
+				machine.Events.Push(NewEvent(e.Dst, false, e.Args))
 			},
 		},
 	)
 
-	init := NewEvent("init")
+	init := NewEvent("init", false, nil)
 	machine.Events.Push(init)
 	broker.Publish(IdentifiedEvent{
 		Mac:   MAC(mac),
@@ -155,28 +160,38 @@ func (m *Machine) Cannot(event string) bool {
 func (m *Machine) Event(ctx context.Context, event string, args ...interface{}) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
+
+	var repeat bool
+
 	if m.fsm.Is(event) {
-		// Emulate the FSM always allowing an event to transition into itself
-		return nil
+		repeat = true
+	} else {
+		repeat = false
 	}
 
-	if m.fsm.Cannot(event) {
-		m.resetToWithoutLocking(event)
+	identifiedEvent := IdentifiedEvent{
+		Mac:   m.Mac,
+		Event: NewEvent(event, repeat, args),
+	}
+
+	if repeat {
+		// Emulate the FSM always allowing an event to transition into itself
+		m.broker.Publish(identifiedEvent)
+		return nil
+	} else if m.fsm.Cannot(event) {
+		m.resetToWithoutLocking(event, args)
 		return nil
 	} else {
 		err := m.fsm.Event(ctx, event, args...)
 		if err == nil {
-			m.broker.Publish(IdentifiedEvent{
-				Mac:   m.Mac,
-				Event: NewEvent(event),
-			})
+			m.broker.Publish(identifiedEvent)
 		}
 		return err
 	}
 }
 
-func (m *Machine) resetToWithoutLocking(event string) {
-	jump := NewEvent("jump_to")
+func (m *Machine) resetToWithoutLocking(event string, args []interface{}) {
+	jump := NewEvent("jump_to", false, nil)
 	m.Events.Push(jump)
 
 	m.broker.Publish(IdentifiedEvent{
@@ -186,7 +201,7 @@ func (m *Machine) resetToWithoutLocking(event string) {
 
 	m.fsm.SetState(event)
 
-	ev := NewEvent(event)
+	ev := NewEvent(event, false, args)
 	m.Events.Push(ev)
 
 	m.broker.Publish(IdentifiedEvent{
