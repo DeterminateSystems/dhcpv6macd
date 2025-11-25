@@ -7,14 +7,6 @@ import (
 	"log"
 )
 
-type ServeIPXEOverTFTPEvent struct {
-	Filename   string `json:"file_name"`
-	State      string `json:"state"`
-	SentBytes  int64  `json:"sent_bytes"`
-	TotalBytes int64  `json:"total_bytes"`
-	Error      error  `json:"error"`
-}
-
 func tftpReadHandler(filename string, rf io.ReaderFrom) error {
 	mac, err := parseMACFromPath(filename)
 	if err != nil {
@@ -26,7 +18,7 @@ func tftpReadHandler(filename string, rf io.ReaderFrom) error {
 
 	underlying_reader := bytes.NewReader(ipxe_efi_x86_64)
 
-	tftpevent := ServeIPXEOverTFTPEvent{
+	tftpevent := TransferEvent{
 		Filename:   filename,
 		State:      "init",
 		TotalBytes: underlying_reader.Size(),

@@ -1,13 +1,20 @@
 package main
 
 import (
+	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"io"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -49,7 +56,6 @@ func webserver(netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error
 	} else if _, err := os.Stat(netbootDir); os.IsNotExist(err) {
 		log.Printf("netboot directory does not exist, will not serve it: %s", netbootDir)
 	} else {
-		fs := http.FileServer(neuteredFileSystem{http.Dir(netbootDir)})
 		server.HandleFunc("/mac/{mac_addr}/boot.efi", func(w http.ResponseWriter, r *http.Request) {
 			// Extract MAC address from path
 			macStr := r.PathValue("mac_addr")
@@ -58,16 +64,71 @@ func webserver(netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error
 				log.Printf("Got request with something that didn't look like a MAC address. Returning 404.")
 				http.NotFound(w, r)
 				return
-			} else {
-				machine := m.GetOrInitMachine(mac)
-
-				// Trigger state transition to http_fetch_uki
-				if err := machine.Event(r.Context(), "http_fetch_uki"); err != nil {
-					log.Printf("Failed to transition to http_fetch_uki for %s: %v", macStr, err)
-				}
 			}
 
-			http.StripPrefix("/mac/", fs).ServeHTTP(w, r)
+			name := path.Clean(path.Join(netbootDir, mac.String(), "boot.efi"))
+			log.Println("?", name)
+
+			if !strings.HasPrefix(name, netbootDir+"/") {
+				log.Println("Path did not clean to subordinate of", netbootDir)
+				http.Error(w, "fishy path", 400)
+				return
+			}
+
+			f, err := os.Open(name)
+			if err != nil {
+				msg, code := toHTTPError(err)
+				http.Error(w, msg, code)
+				return
+			}
+			defer f.Close()
+
+			stat, err := f.Stat()
+			if err != nil {
+				msg, code := toHTTPError(err)
+				http.Error(w, msg, code)
+				return
+			}
+
+			if stat.IsDir() {
+				http.Error(w, "boot.efi was a directory", 500)
+				return
+			}
+
+			w.Header().Set("Content-Length", strconv.FormatInt(stat.Size(), 10))
+			w.Header().Set("Content-Type", "application/octet-stream")
+
+			machine := m.GetOrInitMachine(mac)
+
+			event := TransferEvent{
+				Filename:   name,
+				State:      "init",
+				TotalBytes: stat.Size(),
+			}
+
+			// Trigger state transition to http_fetch_uki
+			if err := machine.Event(r.Context(), "http_fetch_uki", event); err != nil {
+				log.Printf("Failed to transition to http_fetch_uki for %s: %v", macStr, err)
+			}
+
+			event.State = "sending"
+
+			reader := newProgressReader(f, func(bytes int64) error {
+				event.SentBytes = bytes
+				machine.Event(context.Background(), "http_fetch_uki", event)
+				return nil
+			})
+
+			_, err = io.Copy(w, reader)
+
+			if err != nil {
+				event.Error = err
+				machine.Event(context.Background(), "http_fetch_uki", event)
+				log.Printf("Serving failure: %v", err)
+			} else {
+				event.State = "complete"
+				machine.Event(context.Background(), "http_fetch_uki", event)
+			}
 		})
 	}
 
@@ -161,4 +222,23 @@ func webserver(netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error
 	})
 
 	return server, nil
+}
+
+// Following was lifted from net/http:
+//
+// toHTTPError returns a non-specific HTTP error message and status code
+// for a given non-nil error value. It's important that toHTTPError does not
+// actually return err.Error(), since msg and httpStatus are returned to users,
+// and historically Go's ServeContent always returned just "404 Not Found" for
+// all errors. We don't want to start leaking information in error messages.
+func toHTTPError(err error) (msg string, httpStatus int) {
+	if errors.Is(err, fs.ErrNotExist) {
+		return "404 page not found", http.StatusNotFound
+	}
+	if errors.Is(err, fs.ErrPermission) {
+		return "403 Forbidden", http.StatusForbidden
+	}
+
+	// Default:
+	return "500 Internal Server Error", http.StatusInternalServerError
 }

@@ -2,6 +2,14 @@ package main
 
 import "io"
 
+type TransferEvent struct {
+	Filename   string `json:"file_name"`
+	State      string `json:"state"`
+	SentBytes  int64  `json:"sent_bytes"`
+	TotalBytes int64  `json:"total_bytes"`
+	Error      error  `json:"error"`
+}
+
 const five_mib = 5 * 1024 * 1024
 
 type progressReader struct {
