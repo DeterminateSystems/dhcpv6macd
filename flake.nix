@@ -43,6 +43,7 @@
                   go
                   go-tools
                   nixpkgs-fmt
+                  just
                 ];
               };
           });
