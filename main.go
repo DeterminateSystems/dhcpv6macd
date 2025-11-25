@@ -11,6 +11,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"runtime"
 	"slices"
 	"strings"
@@ -516,12 +517,22 @@ func main() {
 		log.Fatalf("Failed to initialize webserver: %v", err)
 	}
 
+	baseLogger := log.New(os.Stderr, "", log.LstdFlags)
+
+	logHook := &FyiHookWriter{
+		w: baseLogger.Writer(),
+		copyTo: func(msg string) {
+			broker.PublishFyi(msg)
+		},
+	}
+
 	// run HTTP
 	go func() {
 		log.Printf("HTTP server listening on %s", *httpListenAddr)
 		server := &http.Server{
-			Addr:    *httpListenAddr,
-			Handler: mux,
+			Addr:     *httpListenAddr,
+			Handler:  mux,
+			ErrorLog: log.New(logHook, "", log.LstdFlags),
 		}
 
 		err = server.ListenAndServe()
@@ -543,10 +554,12 @@ func main() {
 			if err != nil {
 				log.Fatalf("Server failed: %v", err)
 			}
+
 			server := &http.Server{
 				Addr:      *httpsListenAddr,
 				Handler:   mux,
 				TLSConfig: tlsConfig,
+				ErrorLog:  log.New(logHook, "", log.LstdFlags),
 			}
 
 			err = server.ListenAndServeTLS("", "")

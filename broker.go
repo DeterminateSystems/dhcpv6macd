@@ -26,6 +26,14 @@ func (b *Broker) Subscribe() (ch chan IdentifiedEvent, unsubscribe func()) {
 		close(ch)
 	}
 }
+
+func (b *Broker) PublishFyi(msg string) {
+	b.Publish(IdentifiedEvent{
+		Mac:   nil,
+		Event: NewEvent("fyi", false, []interface{}{msg}),
+	})
+}
+
 func (b *Broker) Publish(msg IdentifiedEvent) {
 	log.Println("New event", msg)
 	b.mu.RLock()
