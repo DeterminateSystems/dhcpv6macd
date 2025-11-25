@@ -1,6 +1,7 @@
 package main
 
 import (
+	"log"
 	"sync"
 )
 
@@ -26,6 +27,7 @@ func (b *Broker) Subscribe() (ch chan IdentifiedEvent, unsubscribe func()) {
 	}
 }
 func (b *Broker) Publish(msg IdentifiedEvent) {
+	log.Println("New event", msg)
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	for ch := range b.clients {
