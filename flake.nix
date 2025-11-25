@@ -55,6 +55,11 @@
           pkgsX8664Linux = nixpkgsFor.x86_64-linux;
         in
         {
+          iPXE = pkgsX8664Linux.ipxe.overrideAttrs (oldAttrs: {
+              patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
+                ++ iPxePatches;
+            });
+
           default = pkgs.buildGoModule {
             pname = "dhcpv6macd";
             inherit version;
@@ -68,10 +73,7 @@
               ];
             };
 
-            PXE = pkgsX8664Linux.ipxe.overrideAttrs (oldAttrs: {
-              patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
-                ++ iPxePatches;
-            });
+            PXE = self.packages.x86_64-linux.iPXE;
 
             postPatch = ''
               if [ -f ./ipxe.efi ]; then
