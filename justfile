@@ -1,10 +1,11 @@
 interface := "en0"
 ip := "127.0.0.1"
+repo_root := justfile_directory()
 scratch := justfile_directory() + "/.scratch"
+ipxe_result_link := scratch + "/ipxe-result"
 
 
-
-run: make-samples make-cert
+run: make-pxe-efi make-cert make-samples
     go run . \
         -interface "{{interface}}" \
         -netboot-dir "{{scratch}}/samples" \
@@ -15,6 +16,15 @@ run: make-samples make-cert
         -https-listen-addr "{{ip}}:20443" \
         -tftp-listen-addr "{{ip}}:20069"
 
+make-pxe-efi: make-scratch
+    #!/bin/sh
+    if [ ! -e "{{ipxe_result_link}}/ipxe.efi" ]; then
+        nix build .#iPXE --out-link "{{ipxe_result_link}}"
+    else
+        echo "ipxe.efi: not re-building since it already exists in .scratch"
+    fi
+
+    cat "{{ipxe_result_link}}/ipxe.efi" > "{{repo_root}}/ipxe.efi"
 
 make-cert: make-scratch
     #!/bin/sh
