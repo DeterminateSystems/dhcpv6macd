@@ -470,7 +470,7 @@ func tftpReadHandler(filename string, rf io.ReaderFrom) error {
 	log.Println("Serving ", filename)
 
 	machine := machines.GetOrInitMachine(mac)
-	machine.Event(context.Background(), "served_ipxe_over_tftp")
+	machine.Event(context.Background(), "serve_ipxe_over_tftp")
 
 	r := bytes.NewReader(ipxe_efi_x86_64)
 	n, err := rf.ReadFrom(r)

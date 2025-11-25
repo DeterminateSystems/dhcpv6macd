@@ -111,10 +111,10 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "served_ipxe_over_tftp")
-		expectEvent(t, subscriber, "served_ipxe_over_tftp")
+		machine.Event(context.Background(), "serve_ipxe_over_tftp")
+		expectEvent(t, subscriber, "serve_ipxe_over_tftp")
 
-		want := "[{init bogustime} {firmware_init bogustime} {point_pxe_to_ipxe_over_tftp bogustime} {served_ipxe_over_tftp bogustime}]"
+		want := "[{init bogustime} {firmware_init bogustime} {point_pxe_to_ipxe_over_tftp bogustime} {serve_ipxe_over_tftp bogustime}]"
 		if fmt.Sprint(machine.Events.Slice()) != want {
 			t.Fatalf("Wanted %s, got %s", want, machine.Events.Slice())
 		}
@@ -124,7 +124,7 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 		machine.Event(context.Background(), "point_ipxe_to_http_boot")
 		expectEvent(t, subscriber, "point_ipxe_to_http_boot")
 
-		want := "[{init bogustime} {firmware_init bogustime} {point_pxe_to_ipxe_over_tftp bogustime} {served_ipxe_over_tftp bogustime} {point_ipxe_to_http_boot bogustime}]"
+		want := "[{init bogustime} {firmware_init bogustime} {point_pxe_to_ipxe_over_tftp bogustime} {serve_ipxe_over_tftp bogustime} {point_ipxe_to_http_boot bogustime}]"
 		if fmt.Sprint(machine.Events.Slice()) != want {
 			t.Fatalf("Wanted %s, got %s", want, machine.Events.Slice())
 		}
@@ -134,7 +134,7 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 		machine.Event(context.Background(), "http_fetch_uki")
 		expectEvent(t, subscriber, "http_fetch_uki")
 
-		want := "[{init bogustime} {firmware_init bogustime} {point_pxe_to_ipxe_over_tftp bogustime} {served_ipxe_over_tftp bogustime} {point_ipxe_to_http_boot bogustime} {http_fetch_uki bogustime}]"
+		want := "[{init bogustime} {firmware_init bogustime} {point_pxe_to_ipxe_over_tftp bogustime} {serve_ipxe_over_tftp bogustime} {point_ipxe_to_http_boot bogustime} {http_fetch_uki bogustime}]"
 		if fmt.Sprint(machine.Events.Slice()) != want {
 			t.Fatalf("Wanted %s, got %s", want, machine.Events.Slice())
 		}
@@ -144,7 +144,7 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 		machine.Event(context.Background(), "os_init")
 		expectEvent(t, subscriber, "os_init")
 
-		want := "[{init bogustime} {firmware_init bogustime} {point_pxe_to_ipxe_over_tftp bogustime} {served_ipxe_over_tftp bogustime} {point_ipxe_to_http_boot bogustime} {http_fetch_uki bogustime} {os_init bogustime}]"
+		want := "[{init bogustime} {firmware_init bogustime} {point_pxe_to_ipxe_over_tftp bogustime} {serve_ipxe_over_tftp bogustime} {point_ipxe_to_http_boot bogustime} {http_fetch_uki bogustime} {os_init bogustime}]"
 		if fmt.Sprint(machine.Events.Slice()) != want {
 			t.Fatalf("Wanted %s, got %s", want, machine.Events.Slice())
 		}
@@ -154,7 +154,7 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 		machine.Event(context.Background(), "os_init")
 		expectNoEvent(t, subscriber)
 
-		want := "[{init bogustime} {firmware_init bogustime} {point_pxe_to_ipxe_over_tftp bogustime} {served_ipxe_over_tftp bogustime} {point_ipxe_to_http_boot bogustime} {http_fetch_uki bogustime} {os_init bogustime}]"
+		want := "[{init bogustime} {firmware_init bogustime} {point_pxe_to_ipxe_over_tftp bogustime} {serve_ipxe_over_tftp bogustime} {point_ipxe_to_http_boot bogustime} {http_fetch_uki bogustime} {os_init bogustime}]"
 		if fmt.Sprint(machine.Events.Slice()) != want {
 			t.Fatalf("Wanted %s, got %s", want, machine.Events.Slice())
 		}
@@ -183,14 +183,14 @@ func TestTransitionsJumpTo(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "served_ipxe_over_tftp")
+		machine.Event(context.Background(), "serve_ipxe_over_tftp")
 		expectEvent(t, subscriber, "jump_to")
 
-		expectEvent(t, subscriber, "served_ipxe_over_tftp")
+		expectEvent(t, subscriber, "serve_ipxe_over_tftp")
 
 		expectNoEvent(t, subscriber)
 
-		want := "[{init bogustime} {jump_to bogustime} {served_ipxe_over_tftp bogustime}]"
+		want := "[{init bogustime} {jump_to bogustime} {serve_ipxe_over_tftp bogustime}]"
 		if fmt.Sprint(machine.Events.Slice()) != want {
 			t.Fatalf("Wanted %s, got %s", want, machine.Events.Slice())
 		}
