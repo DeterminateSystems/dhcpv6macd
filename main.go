@@ -12,6 +12,7 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"runtime"
 	"slices"
 	"strings"
 	"text/template"
@@ -38,6 +39,10 @@ type DHCPv6Handler struct {
 var (
 	baseAddress         = flag.String("base-address", "fec0::", "IPv6 base address to distribute MAC-based IPs through, we assume its a /72")
 	networkInterface    = flag.String("interface", "eth0", "Interface to listen on")
+	tftpListenAddr      = flag.String("tftp-listen-addr", ":69", "Address/port to listen for TFTP on. Note: if not all addresses, you must listen on a `base-address`-member address.")
+	httpListenAddr      = flag.String("http-listen-addr", ":80", "Address/port to listen for HTTP on. Note: if not all addresses, you must listen on a `base-address`-member address.")
+	httpsListenAddr     = flag.String("https-listen-addr", ":443", "Address/port to listen for HTTPS on. Note: if not all addresses, you must listen on a `base-address`-member address.")
+	dhcpv6ListenPort    = flag.Int("dhcpv6-listen-port", dhcpv6.DefaultServerPort, "Port to listen for DHCPv6 requests (only useful for testing.)")
 	httpBootURLTemplate = flag.String("http-boot-url-template", "", "URL template for HTTP boot requests, like http://netboot.target/?mac={{.MAC}}")
 	tlsCertFile         = flag.String("tls-cert-file", "", "Path to TLS Certificate File")
 	tlsKeyFile          = flag.String("tls-key-file", "", "Path to TLS Key File")
@@ -516,33 +521,20 @@ func main() {
 		},
 	}
 
-	listenAddr := &net.UDPAddr{
-		IP:   dhcpv6.AllDHCPRelayAgentsAndServers,
-		Port: dhcpv6.DefaultServerPort,
-		Zone: *baseAddress,
-	}
-
-	laddr := &net.UDPAddr{
-		IP:   net.IPv6unspecified,
-		Port: dhcpv6.DefaultServerPort,
-	}
-
 	broker := NewBroker()
 	machines = NewMachines(broker)
 
 	go func() {
-		log.Printf("Starting the TFTP server on port 69")
+		log.Printf("Starting the TFTP server on %s", *tftpListenAddr)
 		tftpServer := tftp.NewServer(tftpReadHandler, nil)
 		tftpServer.SetTimeout(5 * time.Second) // optional
 
-		e := tftpServer.ListenAndServe(":69") // blocks until s.Shutdown() is called
+		e := tftpServer.ListenAndServe(*tftpListenAddr) // blocks until s.Shutdown() is called
 		if e != nil {
 			log.Fatalf("starting TFTP server: %v", e)
 		}
 	}()
 
-	httpAddr := ":80"
-	httpsAddr := ":443"
 	mux, err := webserver(*netbootDir, broker, machines)
 	if err != nil {
 		log.Fatalf("Failed to initialize webserver: %v", err)
@@ -550,9 +542,9 @@ func main() {
 
 	// run HTTP
 	go func() {
-		log.Printf("HTTP server listening on %s", httpAddr)
+		log.Printf("HTTP server listening on %s", *httpListenAddr)
 		server := &http.Server{
-			Addr:    httpAddr,
+			Addr:    *httpListenAddr,
 			Handler: mux,
 		}
 
@@ -565,7 +557,7 @@ func main() {
 	// run HTTPS
 	if useTls {
 		go func() {
-			log.Printf("HTTPs server listening on %s", httpsAddr)
+			log.Printf("HTTPs server listening on %s", *httpsListenAddr)
 			cwTlsConfig := certwatcher.TLSConfig{
 				CertPath:   *tlsCertFile,
 				KeyPath:    *tlsKeyFile,
@@ -576,7 +568,7 @@ func main() {
 				log.Fatalf("Server failed: %v", err)
 			}
 			server := &http.Server{
-				Addr:      httpsAddr,
+				Addr:      *httpsListenAddr,
 				Handler:   mux,
 				TLSConfig: tlsConfig,
 			}
@@ -588,12 +580,26 @@ func main() {
 		}()
 	}
 
-	server, err := server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
+	laddr := &net.UDPAddr{
+		IP:   net.IPv6unspecified,
+		Port: *dhcpv6ListenPort,
+	}
+
+	var server *server6.Server
+	if runtime.GOOS == "darwin" {
+		// macOS: avoid BindToInterface, which is currently broken for IPv6 sockets
+		log.Printf("attempting to listen via UDP on %s on all interfaces to work around BindToInterface on macOS", laddr)
+		server, err = server6.NewServer("", laddr, dhcpv6Handler.Handler)
+	} else {
+		log.Printf("attempting to listen via UDP on %s (iface %s)", laddr, *networkInterface)
+		server, err = server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
+	}
+
 	if err != nil {
 		log.Fatalf("starting DHCPv6 server: %s", err)
 	}
 
-	log.Printf("listening via UDP on %s", listenAddr)
+	log.Printf("DHCPv6 listening via UDP on %s", laddr)
 	if err = server.Serve(); err != nil {
 		log.Fatalf("DHCPv6 server exited: %v", err)
 	}

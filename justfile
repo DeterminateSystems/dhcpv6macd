@@ -10,6 +10,10 @@ run: make-samples make-cert
         -netboot-dir "{{scratch}}/samples" \
         -tls-cert-file "{{scratch}}/tls.crt" \
         -tls-key-file "{{scratch}}/tls.key" \
+        -dhcpv6-listen-port 20547 \
+        -http-listen-addr "{{ip}}:20080" \
+        -https-listen-addr "{{ip}}:20443" \
+        -tftp-listen-addr "{{ip}}:20069"
 
 
 make-cert: make-scratch
