@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
@@ -458,29 +457,6 @@ func parseMACFromPath(s string) (net.HardwareAddr, error) {
 	}
 
 	return mac, nil
-}
-
-func tftpReadHandler(filename string, rf io.ReaderFrom) error {
-	mac, err := parseMACFromPath(filename)
-	if err != nil {
-		log.Println("Can't parse a MAC from ", filename, err)
-		return err
-	}
-
-	log.Println("Serving ", filename)
-
-	machine := machines.GetOrInitMachine(mac)
-	machine.Event(context.Background(), "serve_ipxe_over_tftp")
-
-	r := bytes.NewReader(ipxe_efi_x86_64)
-	n, err := rf.ReadFrom(r)
-	if err != nil {
-		log.Printf("Serving failure: %v", err)
-		return err
-	}
-	log.Printf("%d bytes sent for %s", n, filename)
-	return nil
-
 }
 
 func main() {

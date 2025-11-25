@@ -1,0 +1,45 @@
+package main
+
+import "io"
+
+const five_mib = 5 * 1024 * 1024
+
+type progressReader struct {
+	r          io.Reader
+	total      int64
+	nextMark   int64
+	firedFinal bool
+	onMark     func(bytes int64) error
+}
+
+func newProgressReader(r io.Reader, onMark func(bytes int64) error) *progressReader {
+	return &progressReader{
+		r:        r,
+		nextMark: five_mib,
+		onMark:   onMark,
+	}
+}
+
+func (p *progressReader) Read(b []byte) (int, error) {
+	n, err := p.r.Read(b)
+	if n > 0 {
+		p.total += int64(n)
+
+		for p.total >= p.nextMark {
+			if err := p.onMark(p.nextMark); err != nil {
+				return n, err
+			}
+			p.nextMark += five_mib
+		}
+	}
+
+	// If we've hit EOF, emit one final progress event
+	if err == io.EOF && !p.firedFinal {
+		p.firedFinal = true
+		if err := p.onMark(p.total); err != nil {
+			return n, err
+		}
+	}
+
+	return n, err
+}
