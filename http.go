@@ -128,6 +128,7 @@ func webserver(netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error
 			_, err = io.Copy(w, reader)
 
 			if err != nil {
+				event.State = "error"
 				event.Error = err
 				machine.Event(context.Background(), "http_fetch_uki", event)
 				log.Printf("Serving failure: %v", err)
