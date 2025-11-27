@@ -36,7 +36,6 @@ func webserver(netbootDir string, b *Broker, m *Machines) (*http.ServeMux, error
 			}
 
 			name := path.Clean(path.Join(netbootDir, mac.String(), "boot.efi"))
-			log.Println("?", name)
 
 			if !strings.HasPrefix(name, netbootDir+"/") {
 				log.Println("Path did not clean to subordinate of", netbootDir)
