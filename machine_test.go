@@ -52,7 +52,7 @@ func TestTransitionsHttpBootMatchEvents(t *testing.T) {
 	{
 		expectEvent(t, subscriber, "init")
 
-		want := "[{init bogustime false []}]"
+		want := "[{init bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -60,11 +60,11 @@ func TestTransitionsHttpBootMatchEvents(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "firmware_init")
+		machine.Event(context.Background(), "firmware_init", nil)
 
 		expectEvent(t, subscriber, "firmware_init")
 
-		want := "[{init bogustime false []} {firmware_init bogustime false []}]"
+		want := "[{init bogustime false <nil>} {firmware_init bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -72,10 +72,10 @@ func TestTransitionsHttpBootMatchEvents(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "http_boot")
+		machine.Event(context.Background(), "http_boot", nil)
 		expectEvent(t, subscriber, "http_boot")
 
-		want := "[{init bogustime false []} {firmware_init bogustime false []} {http_boot bogustime false []}]"
+		want := "[{init bogustime false <nil>} {firmware_init bogustime false <nil>} {http_boot bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -98,7 +98,7 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 	{
 		expectEvent(t, subscriber, "init")
 
-		want := "[{init bogustime false []}]"
+		want := "[{init bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -106,10 +106,10 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "firmware_init")
+		machine.Event(context.Background(), "firmware_init", nil)
 		expectEvent(t, subscriber, "firmware_init")
 
-		want := "[{init bogustime false []} {firmware_init bogustime false []}]"
+		want := "[{init bogustime false <nil>} {firmware_init bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -117,10 +117,10 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "point_pxe_to_ipxe_over_tftp")
+		machine.Event(context.Background(), "point_pxe_to_ipxe_over_tftp", nil)
 		expectEvent(t, subscriber, "point_pxe_to_ipxe_over_tftp")
 
-		want := "[{init bogustime false []} {firmware_init bogustime false []} {point_pxe_to_ipxe_over_tftp bogustime false []}]"
+		want := "[{init bogustime false <nil>} {firmware_init bogustime false <nil>} {point_pxe_to_ipxe_over_tftp bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -128,10 +128,10 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "serve_ipxe_over_tftp")
+		machine.Event(context.Background(), "serve_ipxe_over_tftp", nil)
 		expectEvent(t, subscriber, "serve_ipxe_over_tftp")
 
-		want := "[{init bogustime false []} {firmware_init bogustime false []} {point_pxe_to_ipxe_over_tftp bogustime false []} {serve_ipxe_over_tftp bogustime false []}]"
+		want := "[{init bogustime false <nil>} {firmware_init bogustime false <nil>} {point_pxe_to_ipxe_over_tftp bogustime false <nil>} {serve_ipxe_over_tftp bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -139,10 +139,10 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "point_ipxe_to_http_boot")
+		machine.Event(context.Background(), "point_ipxe_to_http_boot", nil)
 		expectEvent(t, subscriber, "point_ipxe_to_http_boot")
 
-		want := "[{init bogustime false []} {firmware_init bogustime false []} {point_pxe_to_ipxe_over_tftp bogustime false []} {serve_ipxe_over_tftp bogustime false []} {point_ipxe_to_http_boot bogustime false []}]"
+		want := "[{init bogustime false <nil>} {firmware_init bogustime false <nil>} {point_pxe_to_ipxe_over_tftp bogustime false <nil>} {serve_ipxe_over_tftp bogustime false <nil>} {point_ipxe_to_http_boot bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -150,10 +150,10 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "http_fetch_uki")
+		machine.Event(context.Background(), "http_fetch_uki", nil)
 		expectEvent(t, subscriber, "http_fetch_uki")
 
-		want := "[{init bogustime false []} {firmware_init bogustime false []} {point_pxe_to_ipxe_over_tftp bogustime false []} {serve_ipxe_over_tftp bogustime false []} {point_ipxe_to_http_boot bogustime false []} {http_fetch_uki bogustime false []}]"
+		want := "[{init bogustime false <nil>} {firmware_init bogustime false <nil>} {point_pxe_to_ipxe_over_tftp bogustime false <nil>} {serve_ipxe_over_tftp bogustime false <nil>} {point_ipxe_to_http_boot bogustime false <nil>} {http_fetch_uki bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -161,10 +161,10 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "os_init")
+		machine.Event(context.Background(), "os_init", nil)
 		expectEvent(t, subscriber, "os_init")
 
-		want := "[{init bogustime false []} {firmware_init bogustime false []} {point_pxe_to_ipxe_over_tftp bogustime false []} {serve_ipxe_over_tftp bogustime false []} {point_ipxe_to_http_boot bogustime false []} {http_fetch_uki bogustime false []} {os_init bogustime false []}]"
+		want := "[{init bogustime false <nil>} {firmware_init bogustime false <nil>} {point_pxe_to_ipxe_over_tftp bogustime false <nil>} {serve_ipxe_over_tftp bogustime false <nil>} {point_ipxe_to_http_boot bogustime false <nil>} {http_fetch_uki bogustime false <nil>} {os_init bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -172,10 +172,10 @@ func TestTransitionsPxeBootMatchEvents(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "os_init")
+		machine.Event(context.Background(), "os_init", nil)
 		expectRepeatEvent(t, subscriber, "os_init")
 
-		want := "[{init bogustime false []} {firmware_init bogustime false []} {point_pxe_to_ipxe_over_tftp bogustime false []} {serve_ipxe_over_tftp bogustime false []} {point_ipxe_to_http_boot bogustime false []} {http_fetch_uki bogustime false []} {os_init bogustime false []}]"
+		want := "[{init bogustime false <nil>} {firmware_init bogustime false <nil>} {point_pxe_to_ipxe_over_tftp bogustime false <nil>} {serve_ipxe_over_tftp bogustime false <nil>} {point_ipxe_to_http_boot bogustime false <nil>} {http_fetch_uki bogustime false <nil>} {os_init bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -198,7 +198,7 @@ func TestTransitionsJumpTo(t *testing.T) {
 	{
 		expectEvent(t, subscriber, "init")
 
-		want := "[{init bogustime false []}]"
+		want := "[{init bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -206,14 +206,14 @@ func TestTransitionsJumpTo(t *testing.T) {
 	}
 
 	{
-		machine.Event(context.Background(), "serve_ipxe_over_tftp")
+		machine.Event(context.Background(), "serve_ipxe_over_tftp", nil)
 		expectEvent(t, subscriber, "jump_to")
 
 		expectEvent(t, subscriber, "serve_ipxe_over_tftp")
 
 		expectNoEvent(t, subscriber)
 
-		want := "[{init bogustime false []} {jump_to bogustime false []} {serve_ipxe_over_tftp bogustime false []}]"
+		want := "[{init bogustime false <nil>} {jump_to bogustime false <nil>} {serve_ipxe_over_tftp bogustime false <nil>}]"
 		got := fmt.Sprint(machine.Events.Slice())
 		if got != want {
 			t.Fatalf("Wanted %s, got %s", want, got)
@@ -230,7 +230,7 @@ func TestEncodeMachines(t *testing.T) {
 	broker := NewBroker()
 	machines := NewMachines(broker)
 
-	machines.GetOrInitMachine(mac).Event(context.Background(), "http_boot")
+	machines.GetOrInitMachine(mac).Event(context.Background(), "http_boot", nil)
 
 	jsonbytes, err := json.Marshal(machines)
 	if err != nil {
@@ -238,7 +238,7 @@ func TestEncodeMachines(t *testing.T) {
 	}
 	json := string(jsonbytes)
 
-	want := "{\"04:42:1a:03:9b:20\":{\"Mac\":\"04:42:1a:03:9b:20\",\"Events\":[{\"event\":\"init\",\"timestamp\":\"bogustime\",\"repeat_event\":false,\"arguments\":null},{\"event\":\"http_boot\",\"timestamp\":\"bogustime\",\"repeat_event\":false,\"arguments\":null}]}}"
+	want := "{\"04:42:1a:03:9b:20\":{\"Mac\":\"04:42:1a:03:9b:20\",\"Events\":[{\"event\":\"init\",\"timestamp\":\"bogustime\",\"repeat_event\":false,\"detail\":null},{\"event\":\"http_boot\",\"timestamp\":\"bogustime\",\"repeat_event\":false,\"detail\":null}]}}"
 	if json != want {
 		t.Fatalf("Wanted %s,\ngot: %s", want, json)
 	}

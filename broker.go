@@ -31,7 +31,7 @@ func (b *Broker) Subscribe() (ch chan IdentifiedEvent, unsubscribe func()) {
 func (b *Broker) PublishFyi(msg string) {
 	b.Publish(IdentifiedEvent{
 		Mac:   nil,
-		Event: NewEvent("fyi", false, []interface{}{msg}),
+		Event: NewEvent("fyi", false, msg),
 	})
 }
 

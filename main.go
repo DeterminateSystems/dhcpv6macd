@@ -382,7 +382,7 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 
 	if httpBootTemplate != nil {
 		if wantsHttpBootFile(msg) {
-			machine.Event(context.Background(), "http_boot")
+			machine.Event(context.Background(), "http_boot", nil)
 			payload, err := archsToEncoded(msg.Options.ArchTypes())
 			if err != nil {
 				log.Printf("failed to construct the arch payload: %s", err)
@@ -405,10 +405,10 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 				resp.AddOption(dhcpv6.OptBootFileURL(buf.String()))
 			}
 		} else if wantsiPxeOverTftp(msg) {
-			machine.Event(context.Background(), "point_pxe_to_ipxe_over_tftp")
+			machine.Event(context.Background(), "point_pxe_to_ipxe_over_tftp", nil)
 			resp.AddOption(dhcpv6.OptBootFileURL(fmt.Sprintf("tftp://[%s]/%s/ipxe.efi", *baseAddress, mac.String())))
 		} else if wantsiPxeChainToHttp(msg) {
-			machine.Event(context.Background(), "point_ipxe_to_http_boot")
+			machine.Event(context.Background(), "point_ipxe_to_http_boot", nil)
 			payload, err := archsToEncoded(msg.Options.ArchTypes())
 			if err != nil {
 				log.Printf("failed to construct the arch payload: %s", err)
@@ -431,9 +431,9 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 				// Firmware seems to make a follow-up solicit/request for just DNS, which should not move us to os_init
 				log.Printf("Detected firmware DNS follow-up request, skipping state transition")
 			} else if msg.Options.ArchTypes() == nil {
-				machine.Event(context.Background(), "os_init")
+				machine.Event(context.Background(), "os_init", nil)
 			} else {
-				machine.Event(context.Background(), "firmware_init")
+				machine.Event(context.Background(), "firmware_init", nil)
 			}
 		}
 	}

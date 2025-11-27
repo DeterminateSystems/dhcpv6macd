@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -68,10 +69,10 @@ type IdentifiedEvent struct {
 }
 
 type Event struct {
-	Event     string        `json:"event"`
-	Timestamp string        `json:"timestamp"`
-	Repeated  bool          `json:"repeat_event"`
-	Arguments []interface{} `json:"arguments"`
+	Event     string      `json:"event"`
+	Timestamp string      `json:"timestamp"`
+	Repeated  bool        `json:"repeat_event"`
+	Detail    interface{} `json:"detail"`
 }
 
 var bogusTimestamp *string
@@ -89,11 +90,11 @@ func (m MAC) String() string {
 	return net.HardwareAddr(m).String()
 }
 
-func NewEvent(event string, repeat bool, args []interface{}) Event {
+func NewEvent(event string, repeat bool, detail interface{}) Event {
 	ev := Event{
-		Event:     event,
-		Repeated:  repeat,
-		Arguments: args,
+		Event:    event,
+		Repeated: repeat,
+		Detail:   detail,
 	}
 
 	if bogusTimestamp == nil {
@@ -129,7 +130,16 @@ func NewMachine(mac net.HardwareAddr, broker *Broker) *Machine {
 		},
 		fsm.Callbacks{
 			"enter_state": func(_ context.Context, e *fsm.Event) {
-				machine.Events.Push(NewEvent(e.Dst, false, e.Args))
+				var arg interface{}
+				if len(e.Args) == 0 {
+					arg = nil
+				} else if len(e.Args) == 1 {
+					arg = e.Args[0]
+				} else {
+					log.Println("Entered a state where the event had plural arguments", machine.Mac, e)
+					arg = e.Args
+				}
+				machine.Events.Push(NewEvent(e.Dst, false, arg))
 			},
 		},
 	)
@@ -156,7 +166,7 @@ func (m *Machine) Cannot(event string) bool {
 	return m.fsm.Cannot(event)
 }
 
-func (m *Machine) Event(ctx context.Context, event string, args ...interface{}) error {
+func (m *Machine) Event(ctx context.Context, event string, detail interface{}) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
@@ -170,7 +180,7 @@ func (m *Machine) Event(ctx context.Context, event string, args ...interface{}) 
 
 	identifiedEvent := IdentifiedEvent{
 		Mac:   m.Mac,
-		Event: NewEvent(event, repeat, args),
+		Event: NewEvent(event, repeat, detail),
 	}
 
 	if repeat {
@@ -178,10 +188,10 @@ func (m *Machine) Event(ctx context.Context, event string, args ...interface{}) 
 		m.broker.Publish(identifiedEvent)
 		return nil
 	} else if m.fsm.Cannot(event) {
-		m.resetToWithoutLocking(event, args)
+		m.resetToWithoutLocking(event, detail)
 		return nil
 	} else {
-		err := m.fsm.Event(ctx, event, args...)
+		err := m.fsm.Event(ctx, event, detail)
 		if err == nil {
 			m.broker.Publish(identifiedEvent)
 		}
@@ -189,7 +199,7 @@ func (m *Machine) Event(ctx context.Context, event string, args ...interface{}) 
 	}
 }
 
-func (m *Machine) resetToWithoutLocking(event string, args []interface{}) {
+func (m *Machine) resetToWithoutLocking(event string, detail interface{}) {
 	jump := NewEvent("jump_to", false, nil)
 	m.Events.Push(jump)
 
@@ -200,7 +210,7 @@ func (m *Machine) resetToWithoutLocking(event string, args []interface{}) {
 
 	m.fsm.SetState(event)
 
-	ev := NewEvent(event, false, args)
+	ev := NewEvent(event, false, detail)
 	m.Events.Push(ev)
 
 	m.broker.Publish(IdentifiedEvent{
