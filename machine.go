@@ -156,6 +156,12 @@ func NewMachine(mac net.HardwareAddr, broker *Broker) *Machine {
 	return &machine
 }
 
+func (m *Machine) SetIPv6Address(ip net.IP) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.IPv6Address = ip
+}
+
 func (m *Machine) Can(event string) bool {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
