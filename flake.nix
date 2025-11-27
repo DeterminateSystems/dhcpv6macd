@@ -56,9 +56,9 @@
         in
         {
           iPXE = pkgsX8664Linux.ipxe.overrideAttrs (oldAttrs: {
-              patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
-                ++ iPxePatches;
-            });
+            patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
+              ++ iPxePatches;
+          });
 
           default = pkgs.buildGoModule {
             pname = "dhcpv6macd";
