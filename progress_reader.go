@@ -35,7 +35,7 @@ func (p *progressReader) Read(b []byte) (int, error) {
 		p.total += int64(n)
 
 		for p.total >= p.nextMark {
-			if err := p.onMark(p.nextMark); err != nil {
+			if err := p.onMark(p.total); err != nil {
 				return n, err
 			}
 			p.nextMark += five_mib
