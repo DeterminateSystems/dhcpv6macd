@@ -338,6 +338,7 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 	copy(prefix, s.baseAddress[:10])
 	leasedIP = append(prefix, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
 
+	machine.IPv6Address = leasedIP
 	log.Printf("Assigning %v to %v", leasedIP, mac)
 
 	err = s.checkIA(msg, leasedIP)

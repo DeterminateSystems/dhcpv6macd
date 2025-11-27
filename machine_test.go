@@ -238,7 +238,7 @@ func TestEncodeMachines(t *testing.T) {
 	}
 	json := string(jsonbytes)
 
-	want := "{\"04:42:1a:03:9b:20\":{\"Mac\":\"04:42:1a:03:9b:20\",\"Events\":[{\"event\":\"init\",\"timestamp\":\"bogustime\",\"repeat_event\":false,\"detail\":null},{\"event\":\"http_boot\",\"timestamp\":\"bogustime\",\"repeat_event\":false,\"detail\":null}]}}"
+	want := "{\"04:42:1a:03:9b:20\":{\"Mac\":\"04:42:1a:03:9b:20\",\"IPv6Address\":\"\",\"Events\":[{\"event\":\"init\",\"timestamp\":\"bogustime\",\"repeat_event\":false,\"detail\":null},{\"event\":\"http_boot\",\"timestamp\":\"bogustime\",\"repeat_event\":false,\"detail\":null}]}}"
 	if json != want {
 		t.Fatalf("Wanted %s,\ngot: %s", want, json)
 	}

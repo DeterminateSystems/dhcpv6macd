@@ -53,19 +53,21 @@ func (m *Machines) MarshalJSON() ([]byte, error) {
 }
 
 type Machine struct {
-	mu     sync.RWMutex
-	Mac    MAC
-	fsm    *fsm.FSM
-	Events *Ring[Event]
-	broker *Broker
+	mu          sync.RWMutex
+	Mac         MAC
+	IPv6Address net.IP
+	fsm         *fsm.FSM
+	Events      *Ring[Event]
+	broker      *Broker
 }
 
 type MAC net.HardwareAddr
 type MACKey string
 
 type IdentifiedEvent struct {
-	Mac   MAC   `json:"mac"`
-	Event Event `json:"event"`
+	Mac         MAC    `json:"mac"`
+	IPv6Address net.IP `json:"ipv6_address"`
+	Event       Event  `json:"event"`
 }
 
 type Event struct {
@@ -179,8 +181,9 @@ func (m *Machine) Event(ctx context.Context, event string, detail interface{}) e
 	}
 
 	identifiedEvent := IdentifiedEvent{
-		Mac:   m.Mac,
-		Event: NewEvent(event, repeat, detail),
+		Mac:         m.Mac,
+		IPv6Address: m.IPv6Address,
+		Event:       NewEvent(event, repeat, detail),
 	}
 
 	if repeat {
@@ -204,8 +207,9 @@ func (m *Machine) resetToWithoutLocking(event string, detail interface{}) {
 	m.Events.Push(jump)
 
 	m.broker.Publish(IdentifiedEvent{
-		Mac:   m.Mac,
-		Event: jump,
+		Mac:         m.Mac,
+		IPv6Address: m.IPv6Address,
+		Event:       jump,
 	})
 
 	m.fsm.SetState(event)
@@ -214,7 +218,8 @@ func (m *Machine) resetToWithoutLocking(event string, detail interface{}) {
 	m.Events.Push(ev)
 
 	m.broker.Publish(IdentifiedEvent{
-		Mac:   m.Mac,
-		Event: ev,
+		Mac:         m.Mac,
+		IPv6Address: m.IPv6Address,
+		Event:       ev,
 	})
 }
