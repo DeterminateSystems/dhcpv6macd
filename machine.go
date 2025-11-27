@@ -68,10 +68,10 @@ type IdentifiedEvent struct {
 }
 
 type Event struct {
-	Event     string `json:"event"`
-	Timestamp string `json:"timestamp"`
-	Repeated  bool   `json:"repeat_event"`
-	Arguments []interface{}
+	Event     string        `json:"event"`
+	Timestamp string        `json:"timestamp"`
+	Repeated  bool          `json:"repeat_event"`
+	Arguments []interface{} `json:"arguments"`
 }
 
 var bogusTimestamp *string
