@@ -39,8 +39,10 @@ func (b *Broker) Publish(msg IdentifiedEvent) {
 	evbytes, err := json.Marshal(msg)
 	if err != nil {
 		log.Println("JSON marshal failure of a published IdentifiedEvent", err)
+	} else {
+		log.Println("Event", string(evbytes))
 	}
-	log.Println("Event", string(evbytes))
+
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	for ch := range b.clients {
