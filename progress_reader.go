@@ -8,7 +8,7 @@ type TransferEvent struct {
 	State      string `json:"state"`
 	SentBytes  int64  `json:"sent_bytes"`
 	TotalBytes int64  `json:"total_bytes"`
-	Error      error  `json:"error"`
+	Error      string `json:"error,omitempty"`
 }
 
 const five_mib = 5 * 1024 * 1024

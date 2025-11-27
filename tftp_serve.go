@@ -39,7 +39,7 @@ func tftpReadHandler(filename string, rf io.ReaderFrom) error {
 	n, err := rf.ReadFrom(r)
 	if err != nil {
 		tftpevent.State = "error"
-		tftpevent.Error = err
+		tftpevent.Error = err.Error()
 		machine.Event(context.Background(), "serve_ipxe_over_tftp", tftpevent)
 		log.Printf("Serving failure: %v", err)
 		return err
