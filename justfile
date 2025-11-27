@@ -36,7 +36,6 @@ make-cert: make-scratch
             -out "{{scratch}}/tls.crt" \
             -sha256 \
             -days 1 \
-            -nodes \
             -subj "/CN=dhcpv6macd"
     else
         echo "scratch TLS key/cert: not recreating them because they exist already"
