@@ -11,7 +11,7 @@ type TransferEvent struct {
 	Error      string `json:"error,omitempty"`
 }
 
-const five_mib = 5 * 1024 * 1024
+const fiveMiB = 5 * 1024 * 1024
 
 type progressReader struct {
 	r          io.Reader
@@ -24,7 +24,7 @@ type progressReader struct {
 func newProgressReader(r io.Reader, onMark func(bytes int64) error) *progressReader {
 	return &progressReader{
 		r:        r,
-		nextMark: five_mib,
+		nextMark: fiveMiB,
 		onMark:   onMark,
 	}
 }
@@ -38,7 +38,7 @@ func (p *progressReader) Read(b []byte) (int, error) {
 			if err := p.onMark(p.total); err != nil {
 				return n, err
 			}
-			p.nextMark += five_mib
+			p.nextMark += fiveMiB
 		}
 	}
 
