@@ -10,6 +10,13 @@ type FyiHookWriter struct {
 }
 
 func (h *FyiHookWriter) Write(p []byte) (int, error) {
-	h.copyTo(string(p))
+	if h.copyTo != nil {
+		h.copyTo(string(p))
+	}
+
+	if h.w == nil {
+		return len(p), nil
+	}
+
 	return h.w.Write(p)
 }
