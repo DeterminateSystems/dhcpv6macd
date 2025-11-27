@@ -178,13 +178,7 @@ func (m *Machine) Event(ctx context.Context, event string, detail interface{}) e
 	m.mu.Lock()
 	defer m.mu.Unlock()
 
-	var repeat bool
-
-	if m.fsm.Is(event) {
-		repeat = true
-	} else {
-		repeat = false
-	}
+	repeat := m.fsm.Is(event)
 
 	identifiedEvent := IdentifiedEvent{
 		Mac:         m.Mac,
