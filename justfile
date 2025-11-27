@@ -48,7 +48,7 @@ make-samples: make-scratch
     mkdir -p "{{scratch}}/samples/00:00:00:00:00:00"
     cd "{{scratch}}/samples/00:00:00:00:00:00"
     if [ ! -e "boot.efi" ]; then
-        yes "dhcpv6macd is a choice" | head --bytes=50MB > boot.efi
+        yes "dhcpv6macd is a choice" | head -c 52428800 > boot.efi
     else
         echo "00:00:00:00:00:00 sample: not creating it because it already exists"
     fi
