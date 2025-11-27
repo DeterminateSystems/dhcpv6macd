@@ -24,6 +24,7 @@ make-pxe-efi: make-scratch
         echo "ipxe.efi: not re-building since it already exists in .scratch"
     fi
 
+    # using cat so we own the file and mtime is correct, etc.
     cat "{{ipxe_result_link}}/ipxe.efi" > "{{repo_root}}/ipxe.efi"
 
 make-cert: make-scratch
