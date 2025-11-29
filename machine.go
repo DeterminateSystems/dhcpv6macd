@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"log"
 	"net"
 	"sync"
 	"time"
@@ -52,24 +53,28 @@ func (m *Machines) MarshalJSON() ([]byte, error) {
 }
 
 type Machine struct {
-	mu     sync.RWMutex
-	Mac    MAC
-	fsm    *fsm.FSM
-	Events *Ring[Event]
-	broker *Broker
+	mu          sync.RWMutex
+	Mac         MAC
+	IPv6Address net.IP
+	fsm         *fsm.FSM
+	Events      *Ring[Event]
+	broker      *Broker
 }
 
 type MAC net.HardwareAddr
 type MACKey string
 
 type IdentifiedEvent struct {
-	Mac   MAC   `json:"mac"`
-	Event Event `json:"event"`
+	Mac         MAC    `json:"mac"`
+	IPv6Address net.IP `json:"ipv6_address"`
+	Event       Event  `json:"event"`
 }
 
 type Event struct {
-	Event     string `json:"event"`
-	Timestamp string `json:"timestamp"`
+	Event     string      `json:"event"`
+	Timestamp string      `json:"timestamp"`
+	Repeated  bool        `json:"repeat_event"`
+	Detail    interface{} `json:"detail"`
 }
 
 var bogusTimestamp *string
@@ -87,9 +92,11 @@ func (m MAC) String() string {
 	return net.HardwareAddr(m).String()
 }
 
-func NewEvent(event string) Event {
+func NewEvent(event string, repeat bool, detail interface{}) Event {
 	ev := Event{
-		Event: event,
+		Event:    event,
+		Repeated: repeat,
+		Detail:   detail,
 	}
 
 	if bogusTimestamp == nil {
@@ -116,8 +123,8 @@ func NewMachine(mac net.HardwareAddr, broker *Broker) *Machine {
 			{Name: "http_boot", Src: []string{"firmware_init", "reset"}, Dst: "http_boot"},
 
 			{Name: "point_pxe_to_ipxe_over_tftp", Src: []string{"firmware_init", "reset"}, Dst: "point_pxe_to_ipxe_over_tftp"},
-			{Name: "served_ipxe_over_tftp", Src: []string{"point_pxe_to_ipxe_over_tftp"}, Dst: "served_ipxe_over_tftp"},
-			{Name: "point_ipxe_to_http_boot", Src: []string{"served_ipxe_over_tftp"}, Dst: "point_ipxe_to_http_boot"},
+			{Name: "serve_ipxe_over_tftp", Src: []string{"point_pxe_to_ipxe_over_tftp"}, Dst: "serve_ipxe_over_tftp"},
+			{Name: "point_ipxe_to_http_boot", Src: []string{"serve_ipxe_over_tftp"}, Dst: "point_ipxe_to_http_boot"},
 
 			{Name: "http_fetch_uki", Src: []string{"http_boot", "point_ipxe_to_http_boot"}, Dst: "http_fetch_uki"},
 
@@ -125,12 +132,21 @@ func NewMachine(mac net.HardwareAddr, broker *Broker) *Machine {
 		},
 		fsm.Callbacks{
 			"enter_state": func(_ context.Context, e *fsm.Event) {
-				machine.Events.Push(NewEvent(e.Dst))
+				var arg interface{}
+				if len(e.Args) == 0 {
+					arg = nil
+				} else if len(e.Args) == 1 {
+					arg = e.Args[0]
+				} else {
+					log.Println("Entered a state where the event had plural arguments", machine.Mac, e)
+					arg = e.Args
+				}
+				machine.Events.Push(NewEvent(e.Dst, false, arg))
 			},
 		},
 	)
 
-	init := NewEvent("init")
+	init := NewEvent("init", false, nil)
 	machine.Events.Push(init)
 	broker.Publish(IdentifiedEvent{
 		Mac:   MAC(mac),
@@ -138,6 +154,12 @@ func NewMachine(mac net.HardwareAddr, broker *Broker) *Machine {
 	})
 
 	return &machine
+}
+
+func (m *Machine) SetIPv6Address(ip net.IP) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	m.IPv6Address = ip
 }
 
 func (m *Machine) Can(event string) bool {
@@ -152,45 +174,52 @@ func (m *Machine) Cannot(event string) bool {
 	return m.fsm.Cannot(event)
 }
 
-func (m *Machine) Event(ctx context.Context, event string, args ...interface{}) error {
+func (m *Machine) Event(ctx context.Context, event string, detail interface{}) error {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	if m.fsm.Is(event) {
-		// Emulate the FSM always allowing an event to transition into itself
-		return nil
+
+	repeat := m.fsm.Is(event)
+
+	identifiedEvent := IdentifiedEvent{
+		Mac:         m.Mac,
+		IPv6Address: m.IPv6Address,
+		Event:       NewEvent(event, repeat, detail),
 	}
 
-	if m.fsm.Cannot(event) {
-		m.resetToWithoutLocking(event)
+	if repeat {
+		// Emulate the FSM always allowing an event to transition into itself
+		m.broker.Publish(identifiedEvent)
+		return nil
+	} else if m.fsm.Cannot(event) {
+		m.resetToWithoutLocking(event, detail)
 		return nil
 	} else {
-		err := m.fsm.Event(ctx, event, args...)
+		err := m.fsm.Event(ctx, event, detail)
 		if err == nil {
-			m.broker.Publish(IdentifiedEvent{
-				Mac:   m.Mac,
-				Event: NewEvent(event),
-			})
+			m.broker.Publish(identifiedEvent)
 		}
 		return err
 	}
 }
 
-func (m *Machine) resetToWithoutLocking(event string) {
-	jump := NewEvent("jump_to")
+func (m *Machine) resetToWithoutLocking(event string, detail interface{}) {
+	jump := NewEvent("jump_to", false, nil)
 	m.Events.Push(jump)
 
 	m.broker.Publish(IdentifiedEvent{
-		Mac:   m.Mac,
-		Event: jump,
+		Mac:         m.Mac,
+		IPv6Address: m.IPv6Address,
+		Event:       jump,
 	})
 
 	m.fsm.SetState(event)
 
-	ev := NewEvent(event)
+	ev := NewEvent(event, false, detail)
 	m.Events.Push(ev)
 
 	m.broker.Publish(IdentifiedEvent{
-		Mac:   m.Mac,
-		Event: ev,
+		Mac:         m.Mac,
+		IPv6Address: m.IPv6Address,
+		Event:       ev,
 	})
 }

@@ -74,7 +74,7 @@ data: {"01:01:01:01:01:01":{"Mac":"01:01:01:01:01:01","Events":[{"event":"init",
 Or if you specified a MAC to filter on, it'll return the object directly (or `null` if the mac isn't present in the event table):
 
 ```
-data: {"Mac":"01:01:01:01:01:01","Events":[{"event":"init","timestamp":"2025-10-13T20:01:16.698695404Z"},{"event":"point_pxe_to_ipxe_over_tftp","timestamp":"2025-10-13T20:01:16.699618993Z"},{"event":"served_ipxe_over_tftp","timestamp":"2025-10-13T20:01:22.946541642Z"},{"event":"point_ipxe_to_http_boot","timestamp":"2025-10-13T20:01:30.972207315Z"},{"event":"os_init","timestamp":"2025-10-13T20:01:50.065743799Z"}]}
+data: {"Mac":"01:01:01:01:01:01","Events":[{"event":"init","timestamp":"2025-10-13T20:01:16.698695404Z"},{"event":"point_pxe_to_ipxe_over_tftp","timestamp":"2025-10-13T20:01:16.699618993Z"},{"event":"serve_ipxe_over_tftp","timestamp":"2025-10-13T20:01:22.946541642Z"},{"event":"point_ipxe_to_http_boot","timestamp":"2025-10-13T20:01:30.972207315Z"},{"event":"os_init","timestamp":"2025-10-13T20:01:50.065743799Z"}]}
 ```
 
 Then, events will be served as they arrive:
@@ -84,7 +84,7 @@ data: {"mac":"01:01:01:01:01:01","event":{"event":"init","timestamp":"2025-10-13
 
 data: {"mac":"01:01:01:01:01:01","event":{"event":"point_pxe_to_ipxe_over_tftp","timestamp":"2025-10-13T20:01:16.699634041Z"}}
 
-data: {"mac":"01:01:01:01:01:01","event":{"event":"served_ipxe_over_tftp","timestamp":"2025-10-13T20:01:22.946572526Z"}}
+data: {"mac":"01:01:01:01:01:01","event":{"event":"serve_ipxe_over_tftp","timestamp":"2025-10-13T20:01:22.946572526Z"}}
 ```
 
 ### Root certificate tweaking

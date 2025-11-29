@@ -1,6 +1,8 @@
 package main
 
 import (
+	"encoding/json"
+	"log"
 	"sync"
 )
 
@@ -25,7 +27,22 @@ func (b *Broker) Subscribe() (ch chan IdentifiedEvent, unsubscribe func()) {
 		close(ch)
 	}
 }
+
+func (b *Broker) PublishFyi(msg string) {
+	b.Publish(IdentifiedEvent{
+		Mac:   nil,
+		Event: NewEvent("fyi", false, msg),
+	})
+}
+
 func (b *Broker) Publish(msg IdentifiedEvent) {
+	evbytes, err := json.Marshal(msg)
+	if err != nil {
+		log.Println("JSON marshal failure of a published IdentifiedEvent", err)
+	} else {
+		log.Println("Event", string(evbytes))
+	}
+
 	b.mu.RLock()
 	defer b.mu.RUnlock()
 	for ch := range b.clients {

@@ -8,10 +8,11 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
-	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
+	"runtime"
 	"slices"
 	"strings"
 	"text/template"
@@ -38,6 +39,10 @@ type DHCPv6Handler struct {
 var (
 	baseAddress         = flag.String("base-address", "fec0::", "IPv6 base address to distribute MAC-based IPs through, we assume its a /72")
 	networkInterface    = flag.String("interface", "eth0", "Interface to listen on")
+	tftpListenAddr      = flag.String("tftp-listen-addr", ":69", "Address/port to listen for TFTP on. Note: if not all addresses, you must listen on a `base-address`-member address.")
+	httpListenAddr      = flag.String("http-listen-addr", ":80", "Address/port to listen for HTTP on. Note: if not all addresses, you must listen on a `base-address`-member address.")
+	httpsListenAddr     = flag.String("https-listen-addr", ":443", "Address/port to listen for HTTPS on. Note: if not all addresses, you must listen on a `base-address`-member address.")
+	dhcpv6ListenPort    = flag.Int("dhcpv6-listen-port", dhcpv6.DefaultServerPort, "Port to listen for DHCPv6 requests (only useful for testing.)")
 	httpBootURLTemplate = flag.String("http-boot-url-template", "", "URL template for HTTP boot requests, like http://netboot.target/?mac={{.MAC}}")
 	tlsCertFile         = flag.String("tls-cert-file", "", "Path to TLS Certificate File")
 	tlsKeyFile          = flag.String("tls-key-file", "", "Path to TLS Key File")
@@ -333,6 +338,7 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 	copy(prefix, s.baseAddress[:10])
 	leasedIP = append(prefix, mac[0], mac[1], mac[2], mac[3], mac[4], mac[5])
 
+	machine.SetIPv6Address(leasedIP)
 	log.Printf("Assigning %v to %v", leasedIP, mac)
 
 	err = s.checkIA(msg, leasedIP)
@@ -377,7 +383,7 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 
 	if httpBootTemplate != nil {
 		if wantsHttpBootFile(msg) {
-			machine.Event(context.Background(), "http_boot")
+			machine.Event(context.Background(), "http_boot", nil)
 			payload, err := archsToEncoded(msg.Options.ArchTypes())
 			if err != nil {
 				log.Printf("failed to construct the arch payload: %s", err)
@@ -400,10 +406,10 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 				resp.AddOption(dhcpv6.OptBootFileURL(buf.String()))
 			}
 		} else if wantsiPxeOverTftp(msg) {
-			machine.Event(context.Background(), "point_pxe_to_ipxe_over_tftp")
+			machine.Event(context.Background(), "point_pxe_to_ipxe_over_tftp", nil)
 			resp.AddOption(dhcpv6.OptBootFileURL(fmt.Sprintf("tftp://[%s]/%s/ipxe.efi", *baseAddress, mac.String())))
 		} else if wantsiPxeChainToHttp(msg) {
-			machine.Event(context.Background(), "point_ipxe_to_http_boot")
+			machine.Event(context.Background(), "point_ipxe_to_http_boot", nil)
 			payload, err := archsToEncoded(msg.Options.ArchTypes())
 			if err != nil {
 				log.Printf("failed to construct the arch payload: %s", err)
@@ -426,9 +432,9 @@ func (s *DHCPv6Handler) process(peer net.Addr, msg *dhcpv6.Message,
 				// Firmware seems to make a follow-up solicit/request for just DNS, which should not move us to os_init
 				log.Printf("Detected firmware DNS follow-up request, skipping state transition")
 			} else if msg.Options.ArchTypes() == nil {
-				machine.Event(context.Background(), "os_init")
+				machine.Event(context.Background(), "os_init", nil)
 			} else {
-				machine.Event(context.Background(), "firmware_init")
+				machine.Event(context.Background(), "firmware_init", nil)
 			}
 		}
 	}
@@ -453,29 +459,6 @@ func parseMACFromPath(s string) (net.HardwareAddr, error) {
 	}
 
 	return mac, nil
-}
-
-func tftpReadHandler(filename string, rf io.ReaderFrom) error {
-	mac, err := parseMACFromPath(filename)
-	if err != nil {
-		log.Println("Can't parse a MAC from ", filename, err)
-		return err
-	}
-
-	log.Println("Serving ", filename)
-
-	machine := machines.GetOrInitMachine(mac)
-	machine.Event(context.Background(), "served_ipxe_over_tftp")
-
-	r := bytes.NewReader(ipxe_efi_x86_64)
-	n, err := rf.ReadFrom(r)
-	if err != nil {
-		log.Printf("Serving failure: %v", err)
-		return err
-	}
-	log.Printf("%d bytes sent for %s", n, filename)
-	return nil
-
 }
 
 func main() {
@@ -516,44 +499,41 @@ func main() {
 		},
 	}
 
-	listenAddr := &net.UDPAddr{
-		IP:   dhcpv6.AllDHCPRelayAgentsAndServers,
-		Port: dhcpv6.DefaultServerPort,
-		Zone: *baseAddress,
-	}
-
-	laddr := &net.UDPAddr{
-		IP:   net.IPv6unspecified,
-		Port: dhcpv6.DefaultServerPort,
-	}
-
 	broker := NewBroker()
 	machines = NewMachines(broker)
 
 	go func() {
-		log.Printf("Starting the TFTP server on port 69")
+		log.Printf("Starting the TFTP server on %s", *tftpListenAddr)
 		tftpServer := tftp.NewServer(tftpReadHandler, nil)
 		tftpServer.SetTimeout(5 * time.Second) // optional
 
-		e := tftpServer.ListenAndServe(":69") // blocks until s.Shutdown() is called
+		e := tftpServer.ListenAndServe(*tftpListenAddr) // blocks until s.Shutdown() is called
 		if e != nil {
 			log.Fatalf("starting TFTP server: %v", e)
 		}
 	}()
 
-	httpAddr := ":80"
-	httpsAddr := ":443"
 	mux, err := webserver(*netbootDir, broker, machines)
 	if err != nil {
 		log.Fatalf("Failed to initialize webserver: %v", err)
 	}
 
+	baseLogger := log.New(os.Stderr, "", log.LstdFlags)
+
+	logHook := &FyiHookWriter{
+		w: baseLogger.Writer(),
+		copyTo: func(msg string) {
+			broker.PublishFyi(msg)
+		},
+	}
+
 	// run HTTP
 	go func() {
-		log.Printf("HTTP server listening on %s", httpAddr)
+		log.Printf("HTTP server listening on %s", *httpListenAddr)
 		server := &http.Server{
-			Addr:    httpAddr,
-			Handler: mux,
+			Addr:     *httpListenAddr,
+			Handler:  mux,
+			ErrorLog: log.New(logHook, "", log.LstdFlags),
 		}
 
 		err = server.ListenAndServe()
@@ -565,7 +545,7 @@ func main() {
 	// run HTTPS
 	if useTls {
 		go func() {
-			log.Printf("HTTPs server listening on %s", httpsAddr)
+			log.Printf("HTTPs server listening on %s", *httpsListenAddr)
 			cwTlsConfig := certwatcher.TLSConfig{
 				CertPath:   *tlsCertFile,
 				KeyPath:    *tlsKeyFile,
@@ -575,10 +555,12 @@ func main() {
 			if err != nil {
 				log.Fatalf("Server failed: %v", err)
 			}
+
 			server := &http.Server{
-				Addr:      httpsAddr,
+				Addr:      *httpsListenAddr,
 				Handler:   mux,
 				TLSConfig: tlsConfig,
+				ErrorLog:  log.New(logHook, "", log.LstdFlags),
 			}
 
 			err = server.ListenAndServeTLS("", "")
@@ -588,12 +570,26 @@ func main() {
 		}()
 	}
 
-	server, err := server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
+	laddr := &net.UDPAddr{
+		IP:   net.IPv6unspecified,
+		Port: *dhcpv6ListenPort,
+	}
+
+	var server *server6.Server
+	if runtime.GOOS == "darwin" {
+		// macOS: avoid BindToInterface, which is currently broken for IPv6 sockets
+		log.Printf("attempting to listen via UDP on %s on all interfaces to work around BindToInterface on macOS", laddr)
+		server, err = server6.NewServer("", laddr, dhcpv6Handler.Handler)
+	} else {
+		log.Printf("attempting to listen via UDP on %s (iface %s)", laddr, *networkInterface)
+		server, err = server6.NewServer(*networkInterface, laddr, dhcpv6Handler.Handler)
+	}
+
 	if err != nil {
 		log.Fatalf("starting DHCPv6 server: %s", err)
 	}
 
-	log.Printf("listening via UDP on %s", listenAddr)
+	log.Printf("DHCPv6 listening via UDP on %s", laddr)
 	if err = server.Serve(); err != nil {
 		log.Fatalf("DHCPv6 server exited: %v", err)
 	}
