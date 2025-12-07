@@ -27,9 +27,6 @@ import (
 	"github.com/pin/tftp/v3"
 )
 
-//go:embed ipxe.efi
-var ipxe_efi_x86_64 []byte
-
 // DHCPv6Handler offers DHCPv6 addresses based on the requester's MAC address.
 type DHCPv6Handler struct {
 	baseAddress net.IP
@@ -47,6 +44,7 @@ var (
 	tlsCertFile         = flag.String("tls-cert-file", "", "Path to TLS Certificate File")
 	tlsKeyFile          = flag.String("tls-key-file", "", "Path to TLS Key File")
 	netbootDir          = flag.String("netboot-dir", "", "Path to MACs to serve for netboot")
+	ipxeX8664EfiPath    = flag.String("ipxe-x86-64-efi", "", "Path to the iPXE EFI binary for x86_64 to serve over TFTP")
 )
 
 var httpBootTemplate *template.Template
@@ -465,6 +463,12 @@ func main() {
 	flag.Parse()
 
 	var err error
+
+	if *ipxeX8664EfiPath != "" {
+		if err := LoadIPXEBinary(*ipxeX8664EfiPath); err != nil {
+			log.Fatalf("Failed to load the iPXE binary: %v", err)
+		}
+	}
 
 	useTls := false
 	if *tlsCertFile == "" || *tlsKeyFile == "" {

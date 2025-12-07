@@ -73,18 +73,6 @@
               ];
             };
 
-            PXE = self.packages.x86_64-linux.iPXE;
-
-            postPatch = ''
-              if [ -f ./ipxe.efi ]; then
-                rm ./ipxe.efi
-              fi
-
-              if [ ! -z $PXE ]; then
-                cp $PXE/ipxe.efi ./ipxe.efi
-              fi
-            '';
-
             # This hash locks the dependencies of this package. It is
             # necessary because of how Go requires network access to resolve
             # VCS.  See https://www.tweag.io/blog/2021-03-04-gomod2nix/ for
@@ -101,7 +89,9 @@
         });
 
       nixosModules = {
-        dhcpv6macd = { pkgs, config, lib, ... }: {
+        dhcpv6macd = { pkgs, config, lib, ... }:
+        let cfg = config.services.detsys.dhcpv6macd;
+        in {
           options = {
             services.detsys.dhcpv6macd = {
               enable = lib.mkEnableOption "DHCPv6MACd";
@@ -154,20 +144,23 @@
                   Location of netboot TLS key PEM.
                 '';
               };
+              ipxeX8664Efi = lib.mkOption {
+                type = lib.types.nullOr lib.types.path;
+                default = self.pacakges.x86_64-linux.iPXE.overrideAttrs ({ makeFlags, ... }@oldAttrs: {
+                  makeFlags = makeFlags ++ (lib.optional (cfg.httpBootRootCertificate != null)
+                    ''TRUST=${cfg.httpBootRootCertificate}'')
+                  ;
+                }) + "/ipxe.efi";
+
+                description = lib.mdDoc ''
+                  Path to the iPXE EFI binary for x86_64 to serve over TFTP.
+                '';
+              };
             };
           };
           config =
             let
-              cfg = config.services.detsys.dhcpv6macd;
-              package = self.packages."${pkgs.stdenv.system}".default.overrideAttrs {
-                PXE = nixpkgsFor.x86_64-linux.ipxe.overrideAttrs ({ makeFlags, ... }@oldAttrs: {
-                  patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
-                    ++ iPxePatches;
-                  makeFlags = makeFlags ++ (lib.optional (cfg.httpBootRootCertificate != null)
-                    ''TRUST=${cfg.httpBootRootCertificate}'')
-                  ;
-                });
-              };
+              package = self.packages."${pkgs.stdenv.system}".default;
             in
             lib.mkIf cfg.enable {
               networking.firewall.interfaces."${cfg.interface}" = {
@@ -195,6 +188,8 @@
                     cfg.tlsKeyFile
                     "-netboot-dir"
                     cfg.netbootDirectory
+                    "-ipxe-x86-64-efi"
+                    cfg.ipxeX8664Efi
                   ]);
                 };
               };
@@ -216,6 +211,7 @@
               interface = "eth1";
               baseAddress = "fd19:287e:c5a0:4931::";
               netbootDirectory = "/netboot/mac";
+              ipxeX8664Efi = builtins.toFile "ipxe.efi" "its-ipxe\n";
             };
 
             networking.useNetworkd = true;
@@ -263,6 +259,9 @@
 
             eth1_addrs = client.succeed("ip -6 addr show eth1")
             assert "fd19:287e:c5a0:4931:0:2de:adbe:ef01" in eth1_addrs, "Did not find expected client IPv6 addr"
+
+            client.succeed("curl tftp://[fd19:287e:c5a0:4931::]/00:00:00:00:00:00/ipxe.efi -o /tmp/ipxe.efi")
+            client.succeed("grep -q its-ipxe /tmp/ipxe.efi")
           '';
         };
     };

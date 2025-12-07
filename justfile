@@ -14,7 +14,8 @@ run: make-pxe-efi make-cert make-samples
         -dhcpv6-listen-port 20547 \
         -http-listen-addr "{{ip}}:20080" \
         -https-listen-addr "{{ip}}:20443" \
-        -tftp-listen-addr "{{ip}}:20069"
+        -tftp-listen-addr "{{ip}}:20069" \
+        -ipxe-x86-64-efi "{{ipxe_result_link}}/ipxe.efi"
 
 make-pxe-efi: make-scratch
     #!/bin/sh
@@ -23,9 +24,6 @@ make-pxe-efi: make-scratch
     else
         echo "ipxe.efi: not re-building since it already exists in .scratch"
     fi
-
-    # using cat so we own the file and mtime is correct, etc.
-    cat "{{ipxe_result_link}}/ipxe.efi" > "{{repo_root}}/ipxe.efi"
 
 make-cert: make-scratch
     #!/bin/sh

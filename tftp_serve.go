@@ -3,9 +3,30 @@ package main
 import (
 	"bytes"
 	"context"
+	"fmt"
 	"io"
 	"log"
+	"os"
 )
+
+// global buffer that replaces the old ipxe_efi_x86_64 const
+var ipxeX8664Efi []byte
+
+// call this at startup, before you create the TFTP server
+func LoadIPXEBinary(path string) error {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return fmt.Errorf("reading iPXE binary %q: %w", path, err)
+	}
+
+	if len(data) == 0 {
+		return fmt.Errorf("iPXE binary %q is empty", path)
+	}
+
+	ipxeX8664Efi = data
+	log.Printf("Loaded iPXE binary %q (%d bytes)", path, len(ipxeX8664Efi))
+	return nil
+}
 
 func tftpReadHandler(filename string, rf io.ReaderFrom) error {
 	mac, err := parseMACFromPath(filename)
@@ -16,7 +37,7 @@ func tftpReadHandler(filename string, rf io.ReaderFrom) error {
 
 	log.Println("Serving ", filename)
 
-	underlying_reader := bytes.NewReader(ipxe_efi_x86_64)
+	underlying_reader := bytes.NewReader(ipxeX8664Efi)
 
 	tftpevent := TransferEvent{
 		Protocol:   "tftp",
