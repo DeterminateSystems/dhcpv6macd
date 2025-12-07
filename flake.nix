@@ -261,8 +261,8 @@
             eth1_addrs = client.succeed("ip -6 addr show eth1")
             assert "fd19:287e:c5a0:4931:0:2de:adbe:ef01" in eth1_addrs, "Did not find expected client IPv6 addr"
 
-            client.succeed("curl -vvv 'tftp://[fd19:287e:c5a0:4931::]/00:00:00:00:00:00/ipxe.efi' -o /tmp/ipxe.efi")
-            client.succeed("grep -q its-ipxe /tmp/ipxe.efi")
+            client.succeed("curl -vvv 'tftp://[fd19:287e:c5a0:4931::]/00:00:00:00:00:00/ipxe.efi' -o ./ipxe.efi")
+            client.succeed("grep -q its-ipxe ./ipxe.efi")
           '';
         };
     };
