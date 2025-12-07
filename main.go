@@ -467,6 +467,8 @@ func main() {
 		if err := LoadIPXEBinary(*ipxeX8664EfiPath); err != nil {
 			log.Fatalf("Failed to load the iPXE binary: %v", err)
 		}
+	} else {
+		log.Fatalf("The -ipxe-x86-64-efi flag must be provided to specify the path to the iPXE EFI binary")
 	}
 
 	useTls := false
