@@ -146,7 +146,7 @@
                 };
                 ipxeX8664Efi = lib.mkOption {
                   type = lib.types.nullOr lib.types.path;
-                  default = self.pacakges.x86_64-linux.iPXE.overrideAttrs
+                  default = self.packages.x86_64-linux.iPXE.overrideAttrs
                     ({ makeFlags, ... }@oldAttrs: {
                       makeFlags = makeFlags ++ (lib.optional (cfg.httpBootRootCertificate != null)
                         ''TRUST=${cfg.httpBootRootCertificate}'')
