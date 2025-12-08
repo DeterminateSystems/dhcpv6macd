@@ -48,18 +48,23 @@
               };
           });
 
+      lib = {
+        mkiPXE = { system, certBundle ? null }:
+          nixpkgsFor.${system}.ipxe.overrideAttrs (oldAttrs: {
+            patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
+              ++ iPxePatches;
+
+            makeFlags = oldAttrs.makeFlags ++ (nixpkgs.lib.optional (certBundle != null)
+              ''TRUST=${certBundle}'');
+          });
+      };
+
       # Provide some binary packages for selected system types.
       packages = forAllSystems (system:
         let
           pkgs = nixpkgsFor.${system};
-          pkgsX8664Linux = nixpkgsFor.x86_64-linux;
         in
-        {
-          iPXE = pkgsX8664Linux.ipxe.overrideAttrs (oldAttrs: {
-            patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
-              ++ iPxePatches;
-          });
-
+        ({
           default = pkgs.buildGoModule {
             pname = "dhcpv6macd";
             inherit version;
@@ -86,7 +91,10 @@
             goSum = ./go.sum;
             vendorHash = "sha256-2CV+mHkHBGwECzMTIZWLYKFshzQHPqcy8K9zZ8QDQLk=";
           };
-        });
+        } // (if (system == "aarch64-darwin") then { } else {
+          iPXE = self.lib.mkiPXE { inherit system; };
+        })
+        ));
 
       nixosModules = {
         dhcpv6macd = { pkgs, config, lib, ... }:
@@ -146,12 +154,10 @@
                 };
                 ipxeX8664Efi = lib.mkOption {
                   type = lib.types.nullOr lib.types.path;
-                  default = self.packages.x86_64-linux.iPXE.overrideAttrs
-                    ({ makeFlags, ... }@oldAttrs: {
-                      makeFlags = makeFlags ++ (lib.optional (cfg.httpBootRootCertificate != null)
-                        ''TRUST=${cfg.httpBootRootCertificate}'')
-                      ;
-                    }) + "/ipxe.efi";
+                  default = (self.lib.mkiPXE {
+                    system = "x86_64-linux";
+                    certBundle = cfg.httpBootRootCertificate;
+                  }) + "/ipxe.efi";
 
                   description = lib.mdDoc ''
                     Path to the iPXE EFI binary for x86_64 to serve over TFTP.
