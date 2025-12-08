@@ -73,18 +73,6 @@
               ];
             };
 
-            PXE = self.packages.x86_64-linux.iPXE;
-
-            postPatch = ''
-              if [ -f ./ipxe.efi ]; then
-                rm ./ipxe.efi
-              fi
-
-              if [ ! -z $PXE ]; then
-                cp $PXE/ipxe.efi ./ipxe.efi
-              fi
-            '';
-
             # This hash locks the dependencies of this package. It is
             # necessary because of how Go requires network access to resolve
             # VCS.  See https://www.tweag.io/blog/2021-03-04-gomod2nix/ for
@@ -101,105 +89,113 @@
         });
 
       nixosModules = {
-        dhcpv6macd = { pkgs, config, lib, ... }: {
-          options = {
-            services.detsys.dhcpv6macd = {
-              enable = lib.mkEnableOption "DHCPv6MACd";
-              interface = lib.mkOption {
-                type = lib.types.nullOr lib.types.str;
-                description = lib.mdDoc ''
-                  The name of the network interface to listen on.
-                '';
-              };
-              baseAddress = lib.mkOption {
-                type = lib.types.str;
-                description = lib.mdDoc ''
-                  The IPv6 address to start with when issuing IP addresses.
-                  The prefix is assumed to be at least a /80.
-                  The MAC address is simply concatenated onto the prefix.
-                '';
-              };
-              httpBootUrlTemplate = lib.mkOption {
-                type = lib.types.str;
-                default = "";
-                description = lib.mdDoc ''
-                  `http://[{{.BaseAddress}}]/?mac={{.MAC}}&payload={{.Payload}}`
-                '';
-              };
-              httpBootRootCertificate = lib.mkOption {
-                type = lib.types.nullOr lib.types.path;
-                default = null;
-                description = lib.mdDoc ''
-                  Path to a root CA certificate to embed in the iPXE binary for HTTPS boot URL validation.
-                  Required when httpBootUrlTemplate uses HTTPS and the server certificate is not signed by a well-known CA.
-                '';
-              };
-              netbootDirectory = lib.mkOption {
-                type = lib.types.nullOr lib.types.path;
-                description = lib.mdDoc ''
-                  `/netboot/mac`
-                '';
-              };
-              tlsCertFile = lib.mkOption {
-                type = lib.types.nullOr lib.types.path;
-                default = null;
-                description = lib.mdDoc ''
-                  Location of netboot TLS cert PEM.
-                '';
-              };
-              tlsKeyFile = lib.mkOption {
-                type = lib.types.nullOr lib.types.path;
-                default = null;
-                description = lib.mdDoc ''
-                  Location of netboot TLS key PEM.
-                '';
-              };
-            };
-          };
-          config =
-            let
-              cfg = config.services.detsys.dhcpv6macd;
-              package = self.packages."${pkgs.stdenv.system}".default.overrideAttrs {
-                PXE = nixpkgsFor.x86_64-linux.ipxe.overrideAttrs ({ makeFlags, ... }@oldAttrs: {
-                  patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
-                    ++ iPxePatches;
-                  makeFlags = makeFlags ++ (lib.optional (cfg.httpBootRootCertificate != null)
-                    ''TRUST=${cfg.httpBootRootCertificate}'')
-                  ;
-                });
-              };
-            in
-            lib.mkIf cfg.enable {
-              networking.firewall.interfaces."${cfg.interface}" = {
-                allowedUDPPorts = [ 547 69 ];
-                allowedTCPPorts = [ 547 6315 ];
-              };
+        dhcpv6macd = { pkgs, config, lib, ... }:
+          let cfg = config.services.detsys.dhcpv6macd;
+          in {
+            options = {
+              services.detsys.dhcpv6macd = {
+                enable = lib.mkEnableOption "DHCPv6MACd";
+                interface = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  description = lib.mdDoc ''
+                    The name of the network interface to listen on.
+                  '';
+                };
+                baseAddress = lib.mkOption {
+                  type = lib.types.str;
+                  description = lib.mdDoc ''
+                    The IPv6 address to start with when issuing IP addresses.
+                    The prefix is assumed to be at least a /80.
+                    The MAC address is simply concatenated onto the prefix.
+                  '';
+                };
+                httpBootUrlTemplate = lib.mkOption {
+                  type = lib.types.str;
+                  default = "";
+                  description = lib.mdDoc ''
+                    `http://[{{.BaseAddress}}]/?mac={{.MAC}}&payload={{.Payload}}`
+                  '';
+                };
+                httpBootRootCertificate = lib.mkOption {
+                  type = lib.types.nullOr lib.types.path;
+                  default = null;
+                  description = lib.mdDoc ''
+                    Path to a root CA certificate to embed in the iPXE binary for HTTPS boot URL validation.
+                    Required when httpBootUrlTemplate uses HTTPS and the server certificate is not signed by a well-known CA.
+                  '';
+                };
+                netbootDirectory = lib.mkOption {
+                  type = lib.types.nullOr lib.types.path;
+                  description = lib.mdDoc ''
+                    `/netboot/mac`
+                  '';
+                };
+                tlsCertFile = lib.mkOption {
+                  type = lib.types.nullOr lib.types.path;
+                  default = null;
+                  description = lib.mdDoc ''
+                    Location of netboot TLS cert PEM.
+                  '';
+                };
+                tlsKeyFile = lib.mkOption {
+                  type = lib.types.nullOr lib.types.path;
+                  default = null;
+                  description = lib.mdDoc ''
+                    Location of netboot TLS key PEM.
+                  '';
+                };
+                ipxeX8664Efi = lib.mkOption {
+                  type = lib.types.nullOr lib.types.path;
+                  default = self.packages.x86_64-linux.iPXE.overrideAttrs
+                    ({ makeFlags, ... }@oldAttrs: {
+                      makeFlags = makeFlags ++ (lib.optional (cfg.httpBootRootCertificate != null)
+                        ''TRUST=${cfg.httpBootRootCertificate}'')
+                      ;
+                    }) + "/ipxe.efi";
 
-              systemd.services.dhcpv6macd = {
-                wantedBy = [ "multi-user.target" ];
-                serviceConfig = {
-                  DynamicUser = true;
-                  AmbientCapabilities = "CAP_NET_BIND_SERVICE";
-                  ProtectSystem = "strict";
-                  ExecStart = "${package}/bin/dhcpv6macd "
-                    + (lib.escapeShellArgs [
-                    "-interface"
-                    cfg.interface
-                    "-base-address"
-                    cfg.baseAddress
-                    "-http-boot-url-template"
-                    cfg.httpBootUrlTemplate
-                    "-tls-cert-file"
-                    cfg.tlsCertFile
-                    "-tls-key-file"
-                    cfg.tlsKeyFile
-                    "-netboot-dir"
-                    cfg.netbootDirectory
-                  ]);
+                  description = lib.mdDoc ''
+                    Path to the iPXE EFI binary for x86_64 to serve over TFTP.
+                  '';
                 };
               };
             };
-        };
+            config =
+              let
+                package = self.packages."${pkgs.stdenv.system}".default;
+              in
+              lib.mkIf cfg.enable {
+                networking.firewall.interfaces."${cfg.interface}" = {
+                  allowedUDPPorts = [ 547 69 ];
+                  allowedTCPPorts = [ 547 6315 ];
+                };
+
+                systemd.services.dhcpv6macd = {
+                  wantedBy = [ "multi-user.target" ];
+                  serviceConfig = {
+                    DynamicUser = true;
+                    AmbientCapabilities = "CAP_NET_BIND_SERVICE";
+                    ProtectSystem = "strict";
+                    ExecStart = "${package}/bin/dhcpv6macd "
+                      + (lib.escapeShellArgs [
+                      "-interface"
+                      cfg.interface
+                      "-base-address"
+                      cfg.baseAddress
+                      "-http-boot-url-template"
+                      cfg.httpBootUrlTemplate
+                      "-tls-cert-file"
+                      cfg.tlsCertFile
+                      "-tls-key-file"
+                      cfg.tlsKeyFile
+                      "-netboot-dir"
+                      cfg.netbootDirectory
+                      "-ipxe-x86-64-efi"
+                      cfg.ipxeX8664Efi
+                    ]);
+                  };
+                };
+              };
+          };
       };
 
       checks.x86_64-linux.package = self.packages.x86_64-linux.default;
@@ -216,6 +212,7 @@
               interface = "eth1";
               baseAddress = "fd19:287e:c5a0:4931::";
               netbootDirectory = "/netboot/mac";
+              ipxeX8664Efi = builtins.toFile "ipxe.efi" "its-ipxe\n";
             };
 
             networking.useNetworkd = true;
