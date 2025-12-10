@@ -21,7 +21,7 @@ jobs:
     runs-on: UbuntuLatest32Cores128G
     permissions:
       id-token: "write"
-      contents: "read"
+      contents: "write"
     steps:
       - uses: actions/checkout@v4
 
