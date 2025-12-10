@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"os"
+
+	"github.com/pin/tftp/v3"
 )
 
 // global buffer that replaces the old ipxe_efi_x86_64 const
@@ -51,6 +53,8 @@ func tftpReadHandler(filename string, rf io.ReaderFrom) error {
 	machine.Event(context.Background(), "serve_ipxe_over_tftp", tftpevent)
 
 	tftpevent.State = "sending"
+
+	rf.(tftp.OutgoingTransfer).SetSize(underlying_reader.Size())
 
 	r := newProgressReader(underlying_reader, func(bytes int64) error {
 		tftpevent.SentBytes = bytes
