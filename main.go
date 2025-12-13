@@ -33,7 +33,7 @@ type DHCPv6Handler struct {
 }
 
 var (
-	baseAddress         = flag.String("base-address", "fec0::", "IPv6 base address to distribute MAC-based IPs through, we assume its a /72")
+	baseAddress         = flag.String("base-address", "fec0::", "IPv6 base address to distribute MAC-based IPs through, we assume its a /80")
 	networkInterface    = flag.String("interface", "eth0", "Interface to listen on")
 	tftpListenAddr      = flag.String("tftp-listen-addr", ":69", "Address/port to listen for TFTP on. Note: if not all addresses, you must listen on a `base-address`-member address.")
 	httpListenAddr      = flag.String("http-listen-addr", ":80", "Address/port to listen for HTTP on. Note: if not all addresses, you must listen on a `base-address`-member address.")
