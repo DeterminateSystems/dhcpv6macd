@@ -73,6 +73,11 @@ echo [${nic}] Phase 3: Configuring IPv6...
 # The "ipv6" configurator handles both SLAAC (for routing via Router Advertisements)
 # and DHCPv6 (for address and boot-uri option 59)
 echo [${nic}] Running IPv6 configuration for address and boot-uri...
+
+clear boot-uri
+clear bootfile-url
+clear filename
+
 ifconf --configurator ipv6 --timeout ${dhcp_timeout} ${nic} || goto dhcp_failed
 echo [${nic}] IPv6 configuration successful
 goto verify_config
@@ -165,9 +170,13 @@ echo Retrying all interfaces in ${retry_delay} seconds...
 # Close any interfaces that might still be open
 set close_idx:int32 0
 :close_loop
-ifclose net${close_idx} ||
+
+set close_nic net${close_idx}
+isset ${${close_nic}/mac} || goto close_done
+ifclose ${close_nic}
 inc close_idx
-iseq ${close_idx} ${idx} || goto close_loop
+goto close_loop
+:close_done
 
 sleep ${retry_delay}
 goto start
