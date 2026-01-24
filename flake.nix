@@ -50,7 +50,9 @@
 
       lib = {
         mkiPXE = { system, certBundle ? null }:
-          nixpkgsFor.${system}.ipxe.overrideAttrs (oldAttrs: {
+          (nixpkgsFor.${system}.ipxe.override {
+            embedScript = ./ipxe/dhcpv6-httpboot.ipxe;
+          }).overrideAttrs (oldAttrs: {
             patches = (if oldAttrs ? patches then oldAttrs.patches else [ ])
               ++ iPxePatches;
 
