@@ -1,0 +1,173 @@
+#!ipxe
+#
+# Robust DHCPv6 HTTP Boot Script
+# Retries forever until successful boot via DHCPv6-provided boot URI.
+# Automatically tries all available network interfaces.
+
+# ============================================================================
+# Configuration
+# ============================================================================
+set link_timeout:int32 10000
+set dhcp_timeout:int32 30000
+set chain_timeout:int32 30000
+set retry_delay:int32 5
+set attempt:int32 0
+
+# ============================================================================
+# Main Entry Point
+# ============================================================================
+:start
+inc attempt
+echo
+echo iPXE DHCPv6 HTTP Boot
+echo Attempt ${attempt}
+
+# Start interface scan at net0
+set idx:int32 0
+
+# ============================================================================
+# Interface Loop - Try each interface in sequence
+# ============================================================================
+:try_next_interface
+set nic net${idx}
+
+# Check if this interface exists by testing if it has a MAC address
+isset ${${nic}/mac} || goto no_more_interfaces
+
+echo
+echo Trying interface: ${nic}
+echo    MAC: ${${nic}/mac}
+echo   Chip: ${${nic}/chip}
+
+# ============================================================================
+# Phase 1: Interface Reset
+# ============================================================================
+:reset_interface
+echo
+echo [${nic}] Phase 1: Resetting interface...
+ifclose ${nic} || echo Warning: ifclose returned error (ignorable)
+sleep 1
+
+# ============================================================================
+# Phase 2: Wait for Link
+# ============================================================================
+:wait_for_link
+echo [${nic}] Phase 2: Waiting for link-up (timeout: ${link_timeout}ms)...
+iflinkwait --timeout ${link_timeout} ${nic} || goto link_failed
+echo [${nic}] Link established
+goto configure_ipv6
+
+:link_failed
+echo [${nic}] No link detected, trying next interface
+ifclose ${nic} ||
+inc idx
+goto try_next_interface
+
+# ============================================================================
+# Phase 3: IPv6 Configuration
+# ============================================================================
+:configure_ipv6
+echo
+echo [${nic}] Phase 3: Configuring IPv6...
+
+# The "ipv6" configurator handles both SLAAC (for routing via Router Advertisements)
+# and DHCPv6 (for address and boot-uri option 59)
+echo [${nic}] Running IPv6 configuration for address and boot-uri...
+ifconf --configurator ipv6 --timeout ${dhcp_timeout} ${nic} || goto dhcp_failed
+echo [${nic}] IPv6 configuration successful
+goto verify_config
+
+:dhcp_failed
+echo [${nic}] IPv6 configuration failed, trying next interface
+ifstat ${nic}
+ifclose ${nic} ||
+inc idx
+goto try_next_interface
+
+# ============================================================================
+# Phase 4: Verify Configuration
+# ============================================================================
+:verify_config
+echo
+echo [${nic}] Phase 4: Verifying configuration...
+echo
+
+# Display current network state
+route
+echo
+echo [${nic}] Checking for boot-uri...
+
+# Verify we have a boot URI
+isset ${boot-uri} || goto no_boot_uri
+
+echo [${nic}] boot-uri: ${boot-uri}
+goto attempt_boot
+
+:no_boot_uri
+# Also check alternate variable names that some DHCP servers may use
+isset ${bootfile-url} && set boot-uri ${bootfile-url} && goto found_alt_uri ||
+isset ${filename} && set boot-uri ${filename} && goto found_alt_uri ||
+echo [${nic}] No boot-uri provided by DHCPv6 server, trying next interface
+ifclose ${nic} ||
+inc idx
+goto try_next_interface
+
+:found_alt_uri
+echo [${nic}] Found alternate boot URI variable
+echo [${nic}] boot-uri: ${boot-uri}
+
+# ============================================================================
+# Phase 5: Attempt Boot
+# ============================================================================
+:attempt_boot
+echo
+echo [${nic}] Phase 5: Attempting to chain-load from boot server...
+echo [${nic}] Target: ${boot-uri}
+echo
+
+# Reset retry delay on successful network config (not needed with fixed delay)
+
+# Chain to the boot URI
+# --autofree: Free memory used by this script after successful chain
+chain --autofree --timeout ${chain_timeout} ${boot-uri} || goto boot_failed
+
+# If chain returns (e.g., chained script ended without booting), treat as failure
+echo [${nic}] WARNING: Chained script returned without booting
+goto retry_all
+
+:boot_failed
+echo [${nic}] ERROR: Failed to chain-load from ${boot-uri}
+echo [${nic}] Error code: ${errno}
+echo [${nic}] Possible causes: server unreachable, invalid script, network issue
+
+# Try next interface in case this one has partial connectivity
+ifclose ${nic} ||
+inc idx
+goto try_next_interface
+
+# ============================================================================
+# No More Interfaces - Retry All
+# ============================================================================
+:no_more_interfaces
+echo
+echo No more interfaces to try, scanned net0 through net${idx}
+
+# Fall through to retry_all
+
+# ============================================================================
+# Retry Handler
+# ============================================================================
+:retry_all
+echo
+echo Boot attempt ${attempt} FAILED
+echo Retrying all interfaces in ${retry_delay} seconds...
+
+# Close any interfaces that might still be open
+set close_idx:int32 0
+:close_loop
+ifclose net${close_idx} ||
+inc close_idx
+iseq ${close_idx} ${idx} || goto close_loop
+
+sleep ${retry_delay}
+goto start
