@@ -105,18 +105,46 @@
             options = {
               services.detsys.dhcpv6macd = {
                 enable = lib.mkEnableOption "DHCPv6MACd";
-                interface = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
-                  description = lib.mdDoc ''
-                    The name of the network interface to listen on.
-                  '';
-                };
                 baseAddress = lib.mkOption {
                   type = lib.types.str;
                   description = lib.mdDoc ''
                     The IPv6 address to start with when issuing IP addresses.
                     The prefix is assumed to be at least a /80.
                     The MAC address is simply concatenated onto the prefix.
+                  '';
+                };
+                interface = lib.mkOption {
+                  type = lib.types.nullOr lib.types.str;
+                  description = lib.mdDoc ''
+                    The name of the network interface to listen on.
+                  '';
+                };
+                tftpListenAddress = lib.mkOption {
+                  type = lib.types.str;
+                  default = ":69";
+                  description = lib.mdDoc ''
+                    The address to listen on for TFTP requests.
+                  '';
+                };
+                httpListenAddress = lib.mkOption {
+                  type = lib.types.str;
+                  default = ":80";
+                  description = lib.mdDoc ''
+                    The address to listen on for HTTP requests.
+                  '';
+                };
+                httpsListenAddress = lib.mkOption {
+                  type = lib.types.str;
+                  default = ":443";
+                  description = lib.mdDoc ''
+                    The address to listen on for HTTPS requests.
+                  '';
+                };
+                dhcpv6ListenPort = lib.mkOption {
+                  type = lib.types.int;
+                  default = 547;
+                  description = lib.mdDoc ''
+                    The port to listen on for DHCPv6 requests.
                   '';
                 };
                 httpBootUrlTemplate = lib.mkOption {
@@ -174,7 +202,7 @@
               lib.mkIf cfg.enable {
                 networking.firewall.interfaces."${cfg.interface}" = {
                   allowedUDPPorts = [ 547 69 ];
-                  allowedTCPPorts = [ 547 6315 ];
+                  allowedTCPPorts = [ 547 ];
                 };
 
                 systemd.services.dhcpv6macd = {
@@ -185,10 +213,18 @@
                     ProtectSystem = "strict";
                     ExecStart = "${package}/bin/dhcpv6macd "
                       + (lib.escapeShellArgs [
-                      "-interface"
-                      cfg.interface
                       "-base-address"
                       cfg.baseAddress
+                      "-interface"
+                      cfg.interface
+                      "-tftp-listen-addr"
+                      cfg.tftpListenAddress
+                      "-http-listen-addr"
+                      cfg.httpListenAddress
+                      "-https-listen-addr"
+                      cfg.httpsListenAddress
+                      "-dhcpv6-listen-port"
+                      (toString cfg.dhcpv6ListenPort)
                       "-http-boot-url-template"
                       cfg.httpBootUrlTemplate
                       "-tls-cert-file"
