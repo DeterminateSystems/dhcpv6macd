@@ -232,11 +232,8 @@
               in
               lib.mkIf cfg.enable {
                 networking.firewall.interfaces."${cfg.interface}" = {
-                  allowedUDPPorts = [
-                    547
-                    69
-                  ];
-                  allowedTCPPorts = [ 547 ];
+                  allowedUDPPorts = [ cfg.dhcpv6ListenPort ];
+                  allowedTCPPorts = [ cfg.dhcpv6ListenPort ];
                 };
 
                 systemd.services.dhcpv6macd = {
