@@ -244,30 +244,40 @@
                     ProtectSystem = "strict";
                     ExecStart =
                       "${package}/bin/dhcpv6macd "
-                      + (lib.escapeShellArgs [
-                        "-base-address"
-                        cfg.baseAddress
-                        "-interface"
-                        cfg.interface
-                        "-tftp-listen-addr"
-                        cfg.tftpListenAddress
-                        "-http-listen-addr"
-                        cfg.httpListenAddress
-                        "-https-listen-addr"
-                        cfg.httpsListenAddress
-                        "-dhcpv6-listen-port"
-                        (toString cfg.dhcpv6ListenPort)
-                        "-http-boot-url-template"
-                        cfg.httpBootUrlTemplate
-                        "-tls-cert-file"
-                        cfg.tlsCertFile
-                        "-tls-key-file"
-                        cfg.tlsKeyFile
-                        "-netboot-dir"
-                        cfg.netbootDirectory
-                        "-ipxe-x86-64-efi"
-                        cfg.ipxeX8664Efi
-                      ]);
+                      + (lib.escapeShellArgs (
+                        [
+                          "-base-address"
+                          cfg.baseAddress
+                          "-interface"
+                          cfg.interface
+                          "-tftp-listen-addr"
+                          cfg.tftpListenAddress
+                          "-http-listen-addr"
+                          cfg.httpListenAddress
+                          "-https-listen-addr"
+                          cfg.httpsListenAddress
+                          "-dhcpv6-listen-port"
+                          (toString cfg.dhcpv6ListenPort)
+                          "-http-boot-url-template"
+                          cfg.httpBootUrlTemplate
+                          "-ipxe-x86-64-efi"
+                          cfg.ipxeX8664Efi
+                        ]
+                        ++ (lib.optionals (cfg.tlsCertFile != null) [
+
+                          "-tls-cert-file"
+                          cfg.tlsCertFile
+
+                        ])
+                        ++ (lib.optionals (cfg.tlsKeyFile != null) [
+                          "-tls-key-file"
+                          cfg.tlsKeyFile
+                        ])
+                        ++ (lib.optionals (cfg.netbootDirectory != null) [
+                          "-netboot-dir"
+                          cfg.netbootDirectory
+                        ])
+                      ));
                   };
                 };
               };
