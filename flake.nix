@@ -143,7 +143,7 @@
                   '';
                 };
                 interface = lib.mkOption {
-                  type = lib.types.nullOr lib.types.str;
+                  type = lib.types.str;
                   description = ''
                     The name of the network interface to listen on.
                   '';
