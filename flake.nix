@@ -136,7 +136,7 @@
                 enable = lib.mkEnableOption "DHCPv6MACd";
                 baseAddress = lib.mkOption {
                   type = lib.types.str;
-                  description = lib.mdDoc ''
+                  description = ''
                     The IPv6 address to start with when issuing IP addresses.
                     The prefix is assumed to be at least a /80.
                     The MAC address is simply concatenated onto the prefix.
@@ -144,70 +144,70 @@
                 };
                 interface = lib.mkOption {
                   type = lib.types.nullOr lib.types.str;
-                  description = lib.mdDoc ''
+                  description = ''
                     The name of the network interface to listen on.
                   '';
                 };
                 tftpListenAddress = lib.mkOption {
                   type = lib.types.str;
                   default = ":69";
-                  description = lib.mdDoc ''
+                  description = ''
                     The address to listen on for TFTP requests.
                   '';
                 };
                 httpListenAddress = lib.mkOption {
                   type = lib.types.str;
                   default = ":80";
-                  description = lib.mdDoc ''
+                  description = ''
                     The address to listen on for HTTP requests.
                   '';
                 };
                 httpsListenAddress = lib.mkOption {
                   type = lib.types.str;
                   default = ":443";
-                  description = lib.mdDoc ''
+                  description = ''
                     The address to listen on for HTTPS requests.
                   '';
                 };
                 dhcpv6ListenPort = lib.mkOption {
                   type = lib.types.int;
                   default = 547;
-                  description = lib.mdDoc ''
+                  description = ''
                     The port to listen on for DHCPv6 requests.
                   '';
                 };
                 httpBootUrlTemplate = lib.mkOption {
                   type = lib.types.str;
                   default = "";
-                  description = lib.mdDoc ''
+                  description = ''
                     `http://[{{.BaseAddress}}]/?mac={{.MAC}}&payload={{.Payload}}`
                   '';
                 };
                 httpBootRootCertificate = lib.mkOption {
                   type = lib.types.nullOr lib.types.path;
                   default = null;
-                  description = lib.mdDoc ''
+                  description = ''
                     Path to a root CA certificate to embed in the iPXE binary for HTTPS boot URL validation.
                     Required when httpBootUrlTemplate uses HTTPS and the server certificate is not signed by a well-known CA.
                   '';
                 };
                 netbootDirectory = lib.mkOption {
                   type = lib.types.nullOr lib.types.path;
-                  description = lib.mdDoc ''
+                  description = ''
                     `/netboot/mac`
                   '';
                 };
                 tlsCertFile = lib.mkOption {
                   type = lib.types.nullOr lib.types.path;
                   default = null;
-                  description = lib.mdDoc ''
+                  description = ''
                     Location of netboot TLS cert PEM.
                   '';
                 };
                 tlsKeyFile = lib.mkOption {
                   type = lib.types.nullOr lib.types.path;
                   default = null;
-                  description = lib.mdDoc ''
+                  description = ''
                     Location of netboot TLS key PEM.
                   '';
                 };
@@ -220,7 +220,7 @@
                     })
                     + "/ipxe.efi";
 
-                  description = lib.mdDoc ''
+                  description = ''
                     Path to the iPXE EFI binary for x86_64 to serve over TFTP.
                   '';
                 };
