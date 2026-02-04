@@ -306,6 +306,8 @@
             assert "fd19:287e:c5a0:4931:0:2de:adbe:ef01" in eth1_addrs, "Did not find expected client IPv6 addr"
           '';
         };
+
+        formatter = forAllSystems (system: nixpkgs.legacyPackages.${system}.nixfmt);
     };
 }
 
