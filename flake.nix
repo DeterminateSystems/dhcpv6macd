@@ -42,7 +42,7 @@
                   eclint
                   go
                   go-tools
-                  nixpkgs-fmt
+                  nixfmt
                   just
                 ];
               };
