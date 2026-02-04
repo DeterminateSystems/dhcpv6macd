@@ -60,9 +60,9 @@ jobs:
         if: ${{ success() || failure() }}
         run: nix develop --command codespell --ignore-words-list crate,pullrequest,pullrequests,ArchTypes --skip target,go.sum .
 
-      - name: Check nixpkgs-fmt formatting
+      - name: Check nixfmt formatting
         if: ${{ success() || failure() }}
-        run: git ls-files '*.nix' | nix develop --command xargs nixpkgs-fmt --check
+        run: git ls-files '*.nix' | nix develop --command xargs nixfmt --check
 
       - name: Check EditorConfig conformance
         if: ${{ success() || failure() }}
